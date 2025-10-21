@@ -1,0 +1,51 @@
+<idea-plugin>
+    <id>com.visualize-transaction</id>
+    <name>Spring Transaction Visualizer</name>
+    <vendor email="closeup1202@gmail.com" url="https://github.com/closeup1202">closeup1202</vendor>
+
+    <description><![CDATA[
+        Spring @Transactional 어노테이션을 정적으로 분석하고 시각화하는 도구입니다.<br>
+        <ul>
+            <li>트랜잭션 경계를 코드에서 시각적으로 표시</li>
+            <li>트랜잭션 전파 문제 감지</li>
+            <li>AOP 프록시 우회 경고</li>
+        </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <codeInsight.lineMarkerProvider
+                language="JAVA"
+                implementationClass="com.visualizetransaction.markers.TransactionLineMarkerProvider"
+        />
+        <!-- Inspections 추가! -->
+        <localInspection
+                language="JAVA"
+                displayName="Same-class @Transactional method call"
+                groupName="Spring transaction"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.TransactionalMethodCallInspection"
+        />
+
+        <localInspection
+                language="JAVA"
+                displayName="Invalid @Transactional method modifier"
+                groupName="Spring Transaction"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.InvalidTransactionalMethodInspection"
+        />
+    </extensions>
+
+    <actions>
+        <action id="TransactionVisualizer.ShowInfo"
+                class="com.visualizetransaction.actions.ShowTransactionInfoAction"
+                text="Show Transaction Info"
+                description="현재 메서드의 트랜잭션 정보를 표시합니다">
+            <add-to-group group-id="EditorPopupMenu" anchor="first"/>
+        </action>
+    </actions>
+</idea-plugin>
