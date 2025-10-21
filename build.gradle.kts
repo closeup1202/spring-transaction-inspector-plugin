@@ -1,6 +1,5 @@
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "2.1.0"
     id("org.jetbrains.intellij.platform") version "2.7.1"
 }
 
@@ -24,6 +23,9 @@ dependencies {
         // Add necessary plugin dependencies for compilation here, example:
         bundledPlugin("com.intellij.java")
     }
+
+    // Testing dependencies
+    testImplementation("junit:junit:4.13.2")
 }
 
 intellijPlatform {
@@ -41,13 +43,17 @@ intellijPlatform {
                 <li>Detection of same-class method calls (AOP proxy bypass)</li>
                 <li>Detection of invalid method modifiers (private/final/static)</li>
                 <li>N+1 query detection in loops and streams</li>
+                <li>Enhanced N+1 detection: flatMap, forEach, filter patterns</li>
+                <li>Detection of write operations in @Transactional(readOnly=true) methods</li>
                 <li>Quick fixes for common issues</li>
                 <li>Customizable settings UI</li>
-                <li>Full support for both Java and Kotlin</li>
+                <li>Comprehensive test suite</li>
                 <li>Compatible with IntelliJ IDEA 2024.2+</li>
             </ul>
         """.trimIndent()
     }
+
+    buildSearchableOptions = false
 }
 
 java {
@@ -60,11 +66,5 @@ tasks {
     withType<JavaCompile> {
         sourceCompatibility = "21"
         targetCompatibility = "21"
-    }
-}
-
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
     }
 }

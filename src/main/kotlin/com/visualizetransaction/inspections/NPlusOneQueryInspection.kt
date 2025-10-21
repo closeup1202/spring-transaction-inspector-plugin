@@ -123,15 +123,24 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
             val streamCalls = PsiTreeUtil.findChildrenOfType(body, PsiMethodCallExpression::class.java)
 
             for (call in streamCalls) {
-                if (call.methodExpression.referenceName == "map") {
+                val methodName = call.methodExpression.referenceName
+
+                // Detect: .map(), .flatMap(), .forEach()
+                if (methodName in listOf("map", "flatMap", "forEach", "filter")) {
                     val lambda = call.argumentList.expressions.firstOrNull() as? PsiLambdaExpression
                     lambda?.let {
                         val lazyAccess = findLazyFieldAccess(it)
                         if (lazyAccess != null) {
+                            val message = when (methodName) {
+                                "map" -> "⚠️ Potential N+1 query: Lazy collection accessed in stream.map(). Consider using fetch join."
+                                "flatMap" -> "⚠️ Potential N+1 query: Lazy collection accessed in stream.flatMap(). Consider using @EntityGraph or fetch join."
+                                "forEach" -> "⚠️ Potential N+1 query: Lazy collection accessed in stream.forEach(). Consider using @EntityGraph or fetch join."
+                                "filter" -> "⚠️ Potential N+1 query: Lazy collection accessed in stream.filter(). Consider using @EntityGraph or fetch join."
+                                else -> "⚠️ Potential N+1 query: Lazy collection accessed in stream operation."
+                            }
                             holder.registerProblem(
                                 lazyAccess as PsiElement,
-                                "⚠️ Potential N+1 query: Lazy collection accessed in stream.map(). " +
-                                        "Consider using fetch join.",
+                                message,
                                 ProblemHighlightType.WARNING
                             )
                         }

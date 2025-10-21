@@ -47,6 +47,8 @@
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
+    <!-- Spring Framework inspection support -->
+    <depends optional="true">com.intellij.spring</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <codeInsight.lineMarkerProvider
@@ -78,6 +80,14 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.visualizetransaction.inspections.NPlusOneQueryInspection"/>
+        <localInspection
+                shortName="ReadOnlyTransactional"
+                language="JAVA"
+                displayName="Write operation in @Transactional(readOnly=true)"
+                groupName="Spring Transaction Inspector"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.ReadOnlyTransactionalInspection"/>
         <projectConfigurable
                 parentId="tools"
                 instance="com.visualizetransaction.settings.TransactionInspectorConfigurable"
