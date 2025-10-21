@@ -5,7 +5,7 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
-import com.visualizetransaction.settings.TransactionVisualizerSettings
+import com.visualizetransaction.settings.TransactionInspectorSettings
 
 class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -15,17 +15,15 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
             override fun visitMethod(method: PsiMethod) {
                 super.visitMethod(method)
 
-                val settings = TransactionVisualizerSettings.getInstance(holder.project).state
+                val settings = TransactionInspectorSettings.getInstance(holder.project).state
                 if (!settings.enableN1Detection) {
-                    return  // N+1 감지 비활성화되어 있으면 체크 안 함
+                    return
                 }
 
-                // @Transactional이 있는 메서드만 검사
                 if (!hasTransactionalAnnotation(method)) {
                     return
                 }
 
-                // 메서드 내부의 모든 표현식 검사
                 method.body?.let { body ->
                     checkForNPlusOne(body, holder, settings)
                 }
@@ -35,7 +33,7 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
 
     private fun checkForNPlusOne(
         body: PsiCodeBlock, holder: ProblemsHolder,
-        settings: TransactionVisualizerSettings.State
+        settings: TransactionInspectorSettings.State
     ) {
         val methodCalls = PsiTreeUtil.findChildrenOfType(body, PsiMethodCallExpression::class.java)
 
@@ -47,7 +45,7 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
             }
         }
 
-        if (settings.checkInLoops) {  // 설정에 따라 체크!
+        if (settings.checkInLoops) {
             checkLazyLoadingInLoops(body, holder, settings)
         }
     }
@@ -55,7 +53,7 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
     private fun checkLazyLoadingAfterQuery(
         queryCall: PsiMethodCallExpression,
         holder: ProblemsHolder,
-        settings: TransactionVisualizerSettings.State
+        settings: TransactionInspectorSettings.State
     ) {
         val parent = PsiTreeUtil.getParentOfType(queryCall, PsiStatement::class.java) ?: return
         val nextStatements = getFollowingStatements(parent)
@@ -63,7 +61,6 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
 
 
         for (statement in nextStatements) {
-            // stream().map() 패턴 찾기
             if (settings.checkInStreamOperations
                 && statement.text.contains(".stream()")
                 && statement.text.contains(".map(")) {
@@ -82,7 +79,6 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
                 }
             }
 
-            // for-each 루프 찾기
             if (settings.checkInLoops && statement is PsiForeachStatement) {
                 val lazyAccess = findLazyFieldAccess(statement.body)
                 if (lazyAccess != null) {
@@ -100,16 +96,14 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
     private fun checkLazyLoadingInLoops(
         body: PsiCodeBlock,
         holder: ProblemsHolder,
-        settings: TransactionVisualizerSettings.State
+        settings: TransactionInspectorSettings.State
     ) {
         if (settings.checkInLoops) {
-            // for-each 루프 찾기
             val foreachStatements = PsiTreeUtil.findChildrenOfType(body, PsiForeachStatement::class.java)
 
             for (loop in foreachStatements) {
                 val loopBody = loop.body ?: continue
 
-                // 루프 내부에서 컬렉션 필드 접근 찾기
                 val fieldAccesses = PsiTreeUtil.findChildrenOfType(loopBody, PsiReferenceExpression::class.java)
 
                 for (access in fieldAccesses) {
@@ -126,12 +120,10 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
         }
 
         if (settings.checkInStreamOperations) {
-            // stream().map() 패턴 찾기
             val streamCalls = PsiTreeUtil.findChildrenOfType(body, PsiMethodCallExpression::class.java)
 
             for (call in streamCalls) {
                 if (call.methodExpression.referenceName == "map") {
-                    // map 안의 람다 표현식 검사
                     val lambda = call.argumentList.expressions.firstOrNull() as? PsiLambdaExpression
                     lambda?.let {
                         val lazyAccess = findLazyFieldAccess(it)
@@ -166,14 +158,11 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
     private fun isLazyCollection(expression: PsiReferenceExpression): Boolean {
         val resolved = expression.resolve()
 
-        // 1. 필드로 직접 resolve된 경우
         if (resolved is PsiField) {
             return checkFieldAnnotations(resolved)
         }
 
-        // 2. getter 메서드로 resolve된 경우
         if (resolved is PsiMethod) {
-            // getter 메서드에서 필드 찾기
             val field = findFieldFromGetter(resolved)
             if (field != null) {
                 return checkFieldAnnotations(field)
@@ -192,9 +181,7 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
                         qualifiedName == "jakarta.persistence.OneToMany" ||
                         qualifiedName == "javax.persistence.ManyToMany" ||
                         qualifiedName == "jakarta.persistence.ManyToMany" -> {
-                    // fetch 타입 확인
                     val fetchValue = annotation.findAttributeValue("fetch")?.text
-                    // LAZY가 명시되어 있거나, 명시 안 됐으면 기본값이 LAZY
                     fetchValue?.contains("LAZY") != false
                 }
 
@@ -208,7 +195,6 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
     private fun findFieldFromGetter(method: PsiMethod): PsiField? {
         val methodName = method.name
 
-        // getter 패턴 확인 (getPosts, isSomething 등)
         val fieldName = when {
             methodName.startsWith("get") && methodName.length > 3 -> {
                 methodName.substring(3).replaceFirstChar { it.lowercase() }
@@ -225,14 +211,12 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
     private fun isRepositoryQueryMethod(method: PsiMethod): Boolean {
         val containingClass = method.containingClass ?: return false
 
-        // Spring Data Repository 인터페이스 확인
         val isRepository = containingClass.interfaces.any {
             it.qualifiedName?.contains("Repository") == true
         }
 
         if (!isRepository) return false
 
-        // findAll, findBy*, getBy* 등 쿼리 메서드
         val methodName = method.name
         return methodName.startsWith("findAll") ||
                 methodName.startsWith("findBy") ||
@@ -241,14 +225,12 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
     }
 
     private fun hasTransactionalAnnotation(method: PsiMethod): Boolean {
-        // 메서드 레벨 체크
         val methodHasIt = method.annotations.any {
             it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
         }
 
         if (methodHasIt) return true
 
-        // 클래스 레벨 체크
         return method.containingClass?.annotations?.any {
             it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
         } ?: false

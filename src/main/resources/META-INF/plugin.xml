@@ -1,16 +1,49 @@
 <idea-plugin>
     <id>com.visualize-transaction</id>
-    <name>Spring Transaction Visualizer</name>
+    <name>Spring Transaction Inspector</name>
+    <version>1.0.0</version>
     <vendor email="closeup1202@gmail.com" url="https://github.com/closeup1202">closeup1202</vendor>
 
     <description><![CDATA[
-        Spring @Transactional 어노테이션을 정적으로 분석하고 시각화하는 도구입니다.<br>
+        <h2>Spring Transaction Inspector</h2>
+        <p>An IntelliJ IDEA plugin that detects potential issues with Spring @Transactional annotations through static analysis.</p>
+
+        <h3>Key Features</h3>
         <ul>
-            <li>트랜잭션 경계를 코드에서 시각적으로 표시</li>
-            <li>트랜잭션 전파 문제 감지</li>
-            <li>AOP 프록시 우회 경고</li>
+            <li><b>Transaction Visualization</b> - Gutter icons to identify transactional methods at a glance</li>
+            <li><b>AOP Proxy Bypass Detection</b> - Warns when calling @Transactional methods within the same class</li>
+            <li><b>Invalid Usage Detection</b> - Detects @Transactional on private/final/static methods</li>
+            <li><b>N+1 Query Detection</b> - Identifies potential N+1 issues in loops and streams with LAZY collections</li>
+            <li><b>Quick Fixes</b> - Automatic fix suggestions for common issues</li>
+            <li><b>Customization</b> - Settings UI to enable/disable specific features</li>
         </ul>
+
+        <h3>Usage</h3>
+        <ol>
+            <li>Open a Spring project</li>
+            <li>Write code with @Transactional annotations</li>
+            <li>Automatically displays warnings and icons</li>
+            <li>Customize settings in Settings > Tools > Spring Transaction Inspector</li>
+        </ol>
+
+        <p><a href="https://github.com/closeup1202/spring-transaction-inspector-plugin">GitHub</a> |
+        <a href="https://github.com/closeup1202/spring-transaction-inspector-plugin/issues">Issues</a></p>
     ]]></description>
+
+    <change-notes><![CDATA[
+        <h3>Version 1.0.0</h3>
+        <ul>
+            <li>Initial release</li>
+            <li>Gutter icons for @Transactional methods</li>
+            <li>Detection of same-class method calls (AOP proxy bypass)</li>
+            <li>Detection of invalid method modifiers (private/final/static)</li>
+            <li>N+1 query detection in loops and streams</li>
+            <li>Quick fixes for common issues</li>
+            <li>Settings UI for customization</li>
+        </ul>
+    ]]></change-notes>
+
+    <idea-version since-build="251"/>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
@@ -24,7 +57,7 @@
         <localInspection
                 language="JAVA"
                 displayName="Same-class @Transactional method call"
-                groupName="Spring Transaction Inspection"
+                groupName="Spring Transaction Inspector"
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.visualizetransaction.inspections.TransactionalMethodCallInspection"
@@ -33,7 +66,7 @@
         <localInspection
                 language="JAVA"
                 displayName="Invalid @Transactional method modifier"
-                groupName="Spring Transaction Inspection"
+                groupName="Spring Transaction Inspector"
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.visualizetransaction.inspections.InvalidTransactionalMethodInspection"
@@ -41,17 +74,22 @@
         <localInspection
                 language="JAVA"
                 displayName="N+1 Query Detection"
-                groupName="Spring Transaction Inspection"
+                groupName="Spring Transaction Inspector"
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.visualizetransaction.inspections.NPlusOneQueryInspection"/>
+        <projectConfigurable
+                parentId="tools"
+                instance="com.visualizetransaction.settings.TransactionInspectorConfigurable"
+                id="com.visualizetransaction.settings.TransactionInspectorConfigurable"
+                displayName="Spring Transaction Inspector"/>
     </extensions>
 
     <actions>
         <action id="TransactionVisualizer.ShowInfo"
                 class="com.visualizetransaction.actions.ShowTransactionInfoAction"
                 text="Show Transaction Info"
-                description="현재 메서드의 트랜잭션 정보를 표시합니다">
+                description="Displays the transaction information of the current method">
             <add-to-group group-id="EditorPopupMenu" anchor="first"/>
         </action>
     </actions>

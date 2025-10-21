@@ -11,21 +11,18 @@ import com.intellij.openapi.project.Project
     name = "TransactionVisualizerSettings",
     storages = [Storage("TransactionVisualizerSettings.xml")]
 )
-class TransactionVisualizerSettings : PersistentStateComponent<TransactionVisualizerSettings.State> {
+class TransactionInspectorSettings : PersistentStateComponent<TransactionInspectorSettings.State> {
 
     data class State(
-        // Inspection 활성화 여부
         var enableSameClassCallDetection: Boolean = true,
         var enablePrivateMethodDetection: Boolean = true,
         var enableFinalMethodDetection: Boolean = true,
         var enableStaticMethodDetection: Boolean = true,
 
-        // N+1 Query Detection
         var enableN1Detection: Boolean = true,
         var checkInStreamOperations: Boolean = true,
         var checkInLoops: Boolean = true,
 
-        // Gutter Icons
         var showGutterIcons: Boolean = true,
         var showReadOnlyWithDifferentIcon: Boolean = true
     )
@@ -39,8 +36,8 @@ class TransactionVisualizerSettings : PersistentStateComponent<TransactionVisual
     }
 
     companion object {
-        fun getInstance(project: Project): TransactionVisualizerSettings {
-            return project.getService(TransactionVisualizerSettings::class.java)
+        fun getInstance(project: Project): TransactionInspectorSettings {
+            return project.getService(TransactionInspectorSettings::class.java)
         }
     }
 }

@@ -11,31 +11,30 @@ import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSeparator
 
-class TransactionVisualizerConfigurable(private val project: Project) : Configurable {
+class TransactionInspectorConfigurable(private val project: Project) : Configurable {
 
     private var mainPanel: JPanel? = null
 
-    // Inspection 체크박스들
+    // Inspection Checkboxes
     private val enableSameClassCallDetection = JBCheckBox("Detect same-class @Transactional method calls")
     private val enablePrivateMethodDetection = JBCheckBox("Warn on private methods with @Transactional")
     private val enableFinalMethodDetection = JBCheckBox("Warn on final methods with @Transactional")
     private val enableStaticMethodDetection = JBCheckBox("Warn on static methods with @Transactional")
 
-    // N+1 체크박스들
+    // N+1 Checkboxes
     private val enableN1Detection = JBCheckBox("Enable N+1 query detection")
     private val checkInStreamOperations = JBCheckBox("Check in stream operations (.map, .flatMap)")
     private val checkInLoops = JBCheckBox("Check in for-each loops")
 
-    // Gutter Icon 체크박스들
+    // Gutter Icon Checkboxes
     private val showGutterIcons = JBCheckBox("Show gutter icons for @Transactional methods")
     private val showReadOnlyWithDifferentIcon = JBCheckBox("Show different icon for readOnly transactions")
 
-    override fun getDisplayName(): String = "Spring Transaction Visualizer"
+    override fun getDisplayName(): String = "Spring Transaction Inspector"
 
     override fun createComponent(): JComponent {
-        val settings = TransactionVisualizerSettings.getInstance(project).state
+        val settings = TransactionInspectorSettings.getInstance(project).state
 
-        // 현재 설정값으로 초기화
         enableSameClassCallDetection.isSelected = settings.enableSameClassCallDetection
         enablePrivateMethodDetection.isSelected = settings.enablePrivateMethodDetection
         enableFinalMethodDetection.isSelected = settings.enableFinalMethodDetection
@@ -48,7 +47,6 @@ class TransactionVisualizerConfigurable(private val project: Project) : Configur
         showGutterIcons.isSelected = settings.showGutterIcons
         showReadOnlyWithDifferentIcon.isSelected = settings.showReadOnlyWithDifferentIcon
 
-        // N+1 체크박스 활성화/비활성화 연동
         enableN1Detection.addActionListener {
             val enabled = enableN1Detection.isSelected
             checkInStreamOperations.isEnabled = enabled
@@ -57,13 +55,11 @@ class TransactionVisualizerConfigurable(private val project: Project) : Configur
         checkInStreamOperations.isEnabled = enableN1Detection.isSelected
         checkInLoops.isEnabled = enableN1Detection.isSelected
 
-        // Gutter Icon 체크박스 연동
         showGutterIcons.addActionListener {
             showReadOnlyWithDifferentIcon.isEnabled = showGutterIcons.isSelected
         }
         showReadOnlyWithDifferentIcon.isEnabled = showGutterIcons.isSelected
 
-        // UI 구성
         mainPanel = FormBuilder.createFormBuilder()
             .addComponent(JBLabel("<html><b>Transaction Inspections</b></html>"), 0)
             .addComponent(enableSameClassCallDetection)
@@ -98,7 +94,7 @@ class TransactionVisualizerConfigurable(private val project: Project) : Configur
     }
 
     override fun isModified(): Boolean {
-        val settings = TransactionVisualizerSettings.getInstance(project).state
+        val settings = TransactionInspectorSettings.getInstance(project).state
 
         return enableSameClassCallDetection.isSelected != settings.enableSameClassCallDetection ||
                 enablePrivateMethodDetection.isSelected != settings.enablePrivateMethodDetection ||
@@ -112,7 +108,7 @@ class TransactionVisualizerConfigurable(private val project: Project) : Configur
     }
 
     override fun apply() {
-        val settings = TransactionVisualizerSettings.getInstance(project)
+        val settings = TransactionInspectorSettings.getInstance(project)
         settings.state.enableSameClassCallDetection = enableSameClassCallDetection.isSelected
         settings.state.enablePrivateMethodDetection = enablePrivateMethodDetection.isSelected
         settings.state.enableFinalMethodDetection = enableFinalMethodDetection.isSelected
@@ -127,7 +123,7 @@ class TransactionVisualizerConfigurable(private val project: Project) : Configur
     }
 
     override fun reset() {
-        val settings = TransactionVisualizerSettings.getInstance(project).state
+        val settings = TransactionInspectorSettings.getInstance(project).state
 
         enableSameClassCallDetection.isSelected = settings.enableSameClassCallDetection
         enablePrivateMethodDetection.isSelected = settings.enablePrivateMethodDetection

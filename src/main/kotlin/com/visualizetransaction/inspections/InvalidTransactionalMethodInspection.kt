@@ -8,7 +8,7 @@ import com.visualizetransaction.quickfixes.ChangeMethodVisibilityFix
 import com.visualizetransaction.quickfixes.RemoveFinalModifierFix
 import com.visualizetransaction.quickfixes.RemoveStaticModifierFix
 import com.visualizetransaction.quickfixes.RemoveTransactionalAnnotationFix
-import com.visualizetransaction.settings.TransactionVisualizerSettings
+import com.visualizetransaction.settings.TransactionInspectorSettings
 
 class InvalidTransactionalMethodInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -21,7 +21,7 @@ class InvalidTransactionalMethodInspection : AbstractBaseJavaLocalInspectionTool
                     it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
                 } ?: return
 
-                val settings = TransactionVisualizerSettings.getInstance(holder.project).state
+                val settings = TransactionInspectorSettings.getInstance(holder.project).state
 
                 if (method.hasModifierProperty(PsiModifier.PRIVATE) && settings.enablePrivateMethodDetection) {
                     holder.registerProblem(
