@@ -18,7 +18,7 @@ IntelliJ IDEA plugin for inspecting and analyzing Spring `@Transactional` annota
 - Automatic fixes for common issues
 - Change method visibility
 - Remove invalid modifiers
-- Add TODO comments
+- Suppress inspection warnings
 
 ### ⚙️ Customization
 - Settings UI to enable/disable features
@@ -37,9 +37,9 @@ IntelliJ IDEA plugin for inspecting and analyzing Spring `@Transactional` annota
 
 ### Automatic Detection
 The plugin automatically inspects your code and shows:
-- 🟢 Green icon for normal transactions
-- 🔵 Blue icon for read-only transactions
-- ⚠️ Yellow warnings for potential issues
+- Gutter icon for normal transactions
+- Different gutter icon for read-only transactions
+- Warning highlights for potential issues
 
 ### Manual Check
 Right-click on a method > `Show Transaction Info`

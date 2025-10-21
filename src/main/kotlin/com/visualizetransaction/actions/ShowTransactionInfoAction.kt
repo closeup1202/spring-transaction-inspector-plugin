@@ -68,7 +68,7 @@ class ShowTransactionInfoAction : AnAction(){
             } else {
                 Messages.showMessageDialog(
                     project,
-                    "Method - '${method.name}'에는 @Transactional이 없습니다.",
+                    "Method '${method.name}' does not have @Transactional annotation.",
                     "Transaction Info",
                     Messages.getInformationIcon()
                 )
