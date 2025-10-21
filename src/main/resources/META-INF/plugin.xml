@@ -24,7 +24,7 @@
         <localInspection
                 language="JAVA"
                 displayName="Same-class @Transactional method call"
-                groupName="Spring transaction"
+                groupName="Spring Transaction Inspection"
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.visualizetransaction.inspections.TransactionalMethodCallInspection"
@@ -33,11 +33,18 @@
         <localInspection
                 language="JAVA"
                 displayName="Invalid @Transactional method modifier"
-                groupName="Spring Transaction"
+                groupName="Spring Transaction Inspection"
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.visualizetransaction.inspections.InvalidTransactionalMethodInspection"
         />
+        <localInspection
+                language="JAVA"
+                displayName="N+1 Query Detection"
+                groupName="Spring Transaction Inspection"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.NPlusOneQueryInspection"/>
     </extensions>
 
     <actions>

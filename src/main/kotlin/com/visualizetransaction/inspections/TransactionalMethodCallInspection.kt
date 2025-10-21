@@ -6,6 +6,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 import com.visualizetransaction.quickfixes.SuppressWarningFix
+import com.visualizetransaction.settings.TransactionVisualizerSettings
 
 class TransactionalMethodCallInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -13,6 +14,8 @@ class TransactionalMethodCallInspection : AbstractBaseJavaLocalInspectionTool() 
         return object : JavaElementVisitor() {
             override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
                 super.visitMethodCallExpression(expression)
+
+                val settings = TransactionVisualizerSettings.getInstance(holder.project).state
 
                 // 호출되는 메서드 찾기
                 val calledMethod = expression.resolveMethod() ?: return
@@ -24,7 +27,7 @@ class TransactionalMethodCallInspection : AbstractBaseJavaLocalInspectionTool() 
                 ) ?: return
 
                 // 같은 클래스인지 확인
-                if (calledMethod.containingClass != callingMethod.containingClass) {
+                if (calledMethod.containingClass != callingMethod.containingClass || !settings.enableSameClassCallDetection) {
                     return
                 }
 

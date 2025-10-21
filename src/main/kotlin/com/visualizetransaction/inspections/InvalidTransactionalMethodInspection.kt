@@ -8,6 +8,7 @@ import com.visualizetransaction.quickfixes.ChangeMethodVisibilityFix
 import com.visualizetransaction.quickfixes.RemoveFinalModifierFix
 import com.visualizetransaction.quickfixes.RemoveStaticModifierFix
 import com.visualizetransaction.quickfixes.RemoveTransactionalAnnotationFix
+import com.visualizetransaction.settings.TransactionVisualizerSettings
 
 class InvalidTransactionalMethodInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -20,7 +21,9 @@ class InvalidTransactionalMethodInspection : AbstractBaseJavaLocalInspectionTool
                     it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
                 } ?: return
 
-                if (method.hasModifierProperty(PsiModifier.PRIVATE)) {
+                val settings = TransactionVisualizerSettings.getInstance(holder.project).state
+
+                if (method.hasModifierProperty(PsiModifier.PRIVATE) && settings.enablePrivateMethodDetection) {
                     holder.registerProblem(
                         transactional as PsiElement,
                         "⚠️ @Transactional on private method '${method.name}' has no effect. " +
@@ -31,7 +34,7 @@ class InvalidTransactionalMethodInspection : AbstractBaseJavaLocalInspectionTool
                     )
                 }
 
-                if (method.hasModifierProperty(PsiModifier.FINAL)) {
+                if (method.hasModifierProperty(PsiModifier.FINAL) && settings.enableFinalMethodDetection) {
                     holder.registerProblem(
                         transactional as PsiElement,
                         "⚠️ @Transactional on final method '${method.name}' has no effect. " +
@@ -42,7 +45,7 @@ class InvalidTransactionalMethodInspection : AbstractBaseJavaLocalInspectionTool
                     )
                 }
 
-                if (method.hasModifierProperty(PsiModifier.STATIC)) {
+                if (method.hasModifierProperty(PsiModifier.STATIC) && settings.enableStaticMethodDetection) {
                     holder.registerProblem(
                         transactional as PsiElement,
                         "⚠️ @Transactional on static method '${method.name}' has no effect.",
