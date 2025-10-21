@@ -83,7 +83,7 @@ public List<UserDTO> getUsers() {
 
 ## Requirements
 
-- IntelliJ IDEA 2025.2.1+ (Community or Ultimate)
+- IntelliJ IDEA 2024.2+ (Community or Ultimate)
 - Java 21+
 - Spring Framework project
 

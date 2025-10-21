@@ -8,8 +8,8 @@ import com.intellij.openapi.project.Project
 
 @Service(Service.Level.PROJECT)
 @State(
-    name = "TransactionVisualizerSettings",
-    storages = [Storage("TransactionVisualizerSettings.xml")]
+    name = "TransactionInspectorSettings",
+    storages = [Storage("TransactionInspectorSettings.xml")]
 )
 class TransactionInspectorSettings : PersistentStateComponent<TransactionInspectorSettings.State> {
 

@@ -28,7 +28,7 @@ class ShowTransactionInfoAction : AnAction(){
             Messages.showMessageDialog(
                 project,
                 "Place the cursor inside the method!",
-                "Transaction Visualizer",
+                "Transaction Inspector",
                 Messages.getWarningIcon()
             )
             return

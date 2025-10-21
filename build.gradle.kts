@@ -4,8 +4,8 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.7.1"
 }
 
-group = "com"
-version = "1.0-SNAPSHOT"
+group = "com.visualizetransaction"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -29,11 +29,23 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "251"
+            sinceBuild = "242"
+            untilBuild = "252.*"
         }
 
         changeNotes = """
-            Initial version
+            <h3>Version 1.0.0</h3>
+            <ul>
+                <li>Initial release</li>
+                <li>Gutter icons for @Transactional methods with different icons for read-only transactions</li>
+                <li>Detection of same-class method calls (AOP proxy bypass)</li>
+                <li>Detection of invalid method modifiers (private/final/static)</li>
+                <li>N+1 query detection in loops and streams</li>
+                <li>Quick fixes for common issues</li>
+                <li>Customizable settings UI</li>
+                <li>Full support for both Java and Kotlin</li>
+                <li>Compatible with IntelliJ IDEA 2024.2+</li>
+            </ul>
         """.trimIndent()
     }
 }
@@ -45,7 +57,6 @@ java {
 }
 
 tasks {
-    // Set the JVM compatibility versions
     withType<JavaCompile> {
         sourceCompatibility = "21"
         targetCompatibility = "21"
