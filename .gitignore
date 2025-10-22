@@ -19,6 +19,7 @@ out/
 ### IntelliJ Platform Plugin Development ###
 .intellijPlatform/
 .kotlin/
+.claude/
 
 ### Eclipse ###
 .apt_generated
