@@ -6,40 +6,51 @@
 
     <description><![CDATA[
         <h2>Spring Transaction Inspector</h2>
-        <p>An IntelliJ IDEA plugin that detects potential issues with Spring @Transactional annotations through static analysis.</p>
+        <p>Catch Spring @Transactional pitfalls before they reach production! This plugin performs static analysis to detect common transaction anti-patterns and configuration issues.</p>
 
-        <h3>Key Features</h3>
+        <h3>🎯 Key Features</h3>
         <ul>
-            <li><b>Transaction Visualization</b> - Gutter icons to identify transactional methods at a glance</li>
             <li><b>AOP Proxy Bypass Detection</b> - Warns when calling @Transactional methods within the same class</li>
-            <li><b>Invalid Usage Detection</b> - Detects @Transactional on private/final/static methods</li>
-            <li><b>N+1 Query Detection</b> - Identifies potential N+1 issues in loops and streams with LAZY collections</li>
-            <li><b>Quick Fixes</b> - Automatic fix suggestions for common issues</li>
-            <li><b>Customization</b> - Settings UI to enable/disable specific features</li>
+            <li><b>Invalid Method Modifiers</b> - Detects @Transactional on private/final/static methods that Spring cannot intercept</li>
+            <li><b>N+1 Query Detection</b> - Identifies potential performance issues with lazy-loaded collections in loops and streams</li>
+            <li><b>ReadOnly Transaction Violations</b> - Detects write operations in @Transactional(readOnly=true) methods</li>
+            <li><b>Checked Exception Rollback</b> - Warns when checked exceptions won't trigger rollback without proper configuration</li>
+            <li><b>@Async + @Transactional Conflicts</b> - Detects when transactions won't propagate to async threads</li>
+            <li><b>ReadOnly Calling Write Methods</b> - Smart detection of propagation conflicts between read-only and write transactions</li>
+            <li><b>Visual Indicators</b> - Gutter icons show transactional methods at a glance</li>
+            <li><b>Quick Fixes</b> - One-click solutions for common issues</li>
+            <li><b>Fully Customizable</b> - Enable/disable specific inspections in Settings</li>
         </ul>
 
-        <h3>Usage</h3>
-        <ol>
-            <li>Open a Spring project</li>
-            <li>Write code with @Transactional annotations</li>
-            <li>Automatically displays warnings and icons</li>
-            <li>Customize settings in Settings > Tools > Spring Transaction Inspector</li>
-        </ol>
+        <h3>💡 Perfect For</h3>
+        <ul>
+            <li>Spring Boot developers working with JPA/Hibernate</li>
+            <li>Teams wanting to catch transaction bugs during code review</li>
+            <li>Developers learning Spring transaction management best practices</li>
+        </ul>
 
-        <p><a href="https://github.com/closeup1202/spring-transaction-inspector-plugin">GitHub</a> |
-        <a href="https://github.com/closeup1202/spring-transaction-inspector-plugin/issues">Issues</a></p>
+        <h3>📖 Learn More</h3>
+        <p><a href="https://github.com/closeup1202/spring-transaction-inspector-plugin">GitHub Repository</a> | <a href="https://github.com/closeup1202/spring-transaction-inspector-plugin/issues">Report Issues</a></p>
     ]]></description>
 
     <change-notes><![CDATA[
-        <h3>Version 1.0.0</h3>
+        <h3>Version 1.0.0 - Initial Release</h3>
         <ul>
-            <li>Initial release</li>
-            <li>Gutter icons for @Transactional methods</li>
-            <li>Detection of same-class method calls (AOP proxy bypass)</li>
-            <li>Detection of invalid method modifiers (private/final/static)</li>
-            <li>N+1 query detection in loops and streams</li>
-            <li>Quick fixes for common issues</li>
-            <li>Settings UI for customization</li>
+            <li><b>7 Comprehensive Inspections:</b>
+                <ul>
+                    <li>AOP proxy bypass detection (same-class @Transactional calls)</li>
+                    <li>Invalid method modifiers (private/final/static)</li>
+                    <li>N+1 query detection in loops and stream operations</li>
+                    <li>Write operations in readOnly transactions</li>
+                    <li>Checked exceptions without rollbackFor configuration</li>
+                    <li>@Async and @Transactional conflicts</li>
+                    <li>ReadOnly transactions calling write-capable methods</li>
+                </ul>
+            </li>
+            <li><b>Smart Quick Fixes:</b> One-click solutions for common issues</li>
+            <li><b>Visual Indicators:</b> Gutter icons with different icons for read-only transactions</li>
+            <li><b>Customizable Settings:</b> Fine-grained control over each inspection</li>
+            <li><b>Detailed Documentation:</b> Each inspection includes comprehensive explanation and examples</li>
         </ul>
     ]]></change-notes>
 
@@ -47,8 +58,6 @@
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>
-    <!-- Spring Framework inspection support -->
-    <depends optional="true">com.intellij.spring</depends>
 
     <extensions defaultExtensionNs="com.intellij">
         <codeInsight.lineMarkerProvider
@@ -88,6 +97,27 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.visualizetransaction.inspections.ReadOnlyTransactionalInspection"/>
+        <localInspection
+                language="JAVA"
+                displayName="Checked exception without rollbackFor in @Transactional"
+                groupName="Spring Transaction Inspector"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.CheckedExceptionRollbackInspection"/>
+        <localInspection
+                language="JAVA"
+                displayName="@Async and @Transactional conflict"
+                groupName="Spring Transaction Inspector"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.AsyncTransactionalConflictInspection"/>
+        <localInspection
+                language="JAVA"
+                displayName="Write method call from readOnly transaction"
+                groupName="Spring Transaction Inspector"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.ReadOnlyTransactionWriteCallInspection"/>
         <projectConfigurable
                 parentId="tools"
                 instance="com.visualizetransaction.settings.TransactionInspectorConfigurable"

@@ -1,6 +1,5 @@
 package com.visualizetransaction.inspections
 
-import com.intellij.codeInspection.InspectionProfileEntry
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 /**

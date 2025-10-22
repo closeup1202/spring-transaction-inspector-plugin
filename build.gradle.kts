@@ -1,5 +1,6 @@
 plugins {
     id("java")
+    id("org.jetbrains.kotlin.jvm") version "2.1.0"
     id("org.jetbrains.intellij.platform") version "2.7.1"
 }
 
@@ -24,7 +25,7 @@ dependencies {
         bundledPlugin("com.intellij.java")
     }
 
-    // Testing dependencies
+    // JUnit 4 for BasePlatformTestCase (which extends junit.framework.TestCase)
     testImplementation("junit:junit:4.13.2")
 }
 
@@ -66,5 +67,14 @@ tasks {
     withType<JavaCompile> {
         sourceCompatibility = "21"
         targetCompatibility = "21"
+    }
+
+    test {
+        systemProperty("java.awt.headless", "true")
+        systemProperty("file.encoding", "UTF-8")
+        testLogging {
+            events("passed", "failed", "skipped")
+            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        }
     }
 }

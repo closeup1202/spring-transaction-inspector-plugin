@@ -18,6 +18,9 @@ class TransactionInspectorSettings : PersistentStateComponent<TransactionInspect
         var enablePrivateMethodDetection: Boolean = true,
         var enableFinalMethodDetection: Boolean = true,
         var enableStaticMethodDetection: Boolean = true,
+        var enableCheckedExceptionRollbackDetection: Boolean = true,
+        var enableAsyncTransactionalDetection: Boolean = true,
+        var enableReadOnlyWriteCallDetection: Boolean = true,
 
         var enableN1Detection: Boolean = true,
         var checkInStreamOperations: Boolean = true,

@@ -22,10 +22,7 @@ class ChangeMethodVisibilityFix(
         val annotation = descriptor.psiElement
         val method = annotation.parent?.parent as? PsiMethod ?: return
 
-        // private 제거
         method.modifierList.setModifierProperty(PsiModifier.PRIVATE, false)
-
-        // public 추가
         method.modifierList.setModifierProperty(PsiModifier.PUBLIC, true)
     }
 }

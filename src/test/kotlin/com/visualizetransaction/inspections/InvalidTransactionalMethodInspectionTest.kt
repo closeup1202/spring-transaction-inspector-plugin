@@ -107,7 +107,11 @@ class InvalidTransactionalMethodInspectionTest : BasePlatformTestCase() {
         myFixture.configureByText("UserService.java", code)
         val highlights = myFixture.doHighlighting()
 
-        assert(highlights.none { it.description?.contains("private") == true || it.description?.contains("final") == true || it.description?.contains("static") == true }) {
+        assert(highlights.none {
+            it.description?.contains("private") == true || it.description?.contains("final") == true || it.description?.contains(
+                "static"
+            ) == true
+        }) {
             "Unexpected warning for valid public @Transactional method"
         }
     }

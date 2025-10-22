@@ -5,16 +5,8 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
+import com.visualizetransaction.utils.PsiUtils
 
-/**
- * Inspection to detect INSERT/UPDATE operations in @Transactional(readOnly=true) methods
- *
- * Example:
- * @Transactional(readOnly = true)
- * public void updateUser(User user) {
- *     repository.save(user);  // ❌ WARNING: readOnly=true but performing write operation
- * }
- */
 class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
@@ -23,7 +15,6 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
             override fun visitMethod(method: PsiMethod) {
                 super.visitMethod(method)
 
-                // Check if method has @Transactional(readOnly=true)
                 val transactionalAnnotation = method.annotations.find {
                     it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
                 } ?: return
@@ -48,7 +39,6 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
             val methodName = call.methodExpression.referenceName ?: continue
             val resolvedMethod = call.resolveMethod()
 
-            // Check for save, update, delete operations
             if (isWriteOperation(methodName, resolvedMethod)) {
                 holder.registerProblem(
                     call as PsiElement,
@@ -59,9 +49,8 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
                 )
             }
 
-            // Check for add, remove on lazy collections
             if (isCollectionModificationOperation(methodName)) {
-                val caller = (call.methodExpression as? PsiReferenceExpression)?.qualifier as? PsiExpression
+                val caller = call.methodExpression.qualifier as? PsiExpression
                 if (caller != null && representsLazyCollection(caller)) {
                     holder.registerProblem(
                         call as PsiElement,
@@ -89,13 +78,7 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
             return true
         }
 
-        // Check method's return type (void or boolean often indicates write)
-        if (method != null) {
-            val returnType = method.returnType
-            if (returnType is PsiPrimitiveType && returnType.kind == PsiPrimitiveType.VOID) {
-                return writePatterns.any { methodName.lowercase().startsWith(it) }
-            }
-        }
+        method?.returnType
 
         return false
     }
@@ -113,8 +96,7 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
             }
 
             if (resolved is PsiMethod) {
-                // It's a getter method
-                val field = findFieldFromGetter(resolved)
+                val field = PsiUtils.findFieldFromGetter(resolved)
                 if (field != null) {
                     return hasLazyAnnotation(field)
                 }
@@ -139,21 +121,6 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
         }
     }
 
-    private fun findFieldFromGetter(method: PsiMethod): PsiField? {
-        val methodName = method.name
-
-        val fieldName = when {
-            methodName.startsWith("get") && methodName.length > 3 -> {
-                methodName.substring(3).replaceFirstChar { it.lowercase() }
-            }
-            methodName.startsWith("is") && methodName.length > 2 -> {
-                methodName.substring(2).replaceFirstChar { it.lowercase() }
-            }
-            else -> return null
-        }
-
-        return method.containingClass?.findFieldByName(fieldName, false)
-    }
 
     override fun getStaticDescription(): String {
         return """

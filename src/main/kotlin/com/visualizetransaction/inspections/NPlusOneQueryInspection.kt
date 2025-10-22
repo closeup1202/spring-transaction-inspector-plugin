@@ -6,6 +6,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 import com.visualizetransaction.settings.TransactionInspectorSettings
+import com.visualizetransaction.utils.PsiUtils
 
 class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -35,61 +36,9 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
         body: PsiCodeBlock, holder: ProblemsHolder,
         settings: TransactionInspectorSettings.State
     ) {
-        val methodCalls = PsiTreeUtil.findChildrenOfType(body, PsiMethodCallExpression::class.java)
-
-        for (call in methodCalls) {
-            val method = call.resolveMethod() ?: continue
-
-            if (isRepositoryQueryMethod(method)) {
-                checkLazyLoadingAfterQuery(call, holder, settings)
-            }
-        }
-
+        // Check for lazy loading in loops and stream operations
         if (settings.checkInLoops) {
             checkLazyLoadingInLoops(body, holder, settings)
-        }
-    }
-
-    private fun checkLazyLoadingAfterQuery(
-        queryCall: PsiMethodCallExpression,
-        holder: ProblemsHolder,
-        settings: TransactionInspectorSettings.State
-    ) {
-        val parent = PsiTreeUtil.getParentOfType(queryCall, PsiStatement::class.java) ?: return
-        val nextStatements = getFollowingStatements(parent)
-
-
-
-        for (statement in nextStatements) {
-            if (settings.checkInStreamOperations
-                && statement.text.contains(".stream()")
-                && statement.text.contains(".map(")) {
-                val lambdas = PsiTreeUtil.findChildrenOfType(statement, PsiLambdaExpression::class.java)
-
-                for (lambda in lambdas) {
-                    val lazyAccess = findLazyFieldAccess(lambda)
-                    if (lazyAccess != null) {
-                        holder.registerProblem(
-                            lazyAccess as PsiElement,
-                            "⚠️ Potential N+1 query: Lazy-loaded collection accessed in stream. " +
-                                    "Consider using fetch join or @EntityGraph.",
-                            ProblemHighlightType.WARNING
-                        )
-                    }
-                }
-            }
-
-            if (settings.checkInLoops && statement is PsiForeachStatement) {
-                val lazyAccess = findLazyFieldAccess(statement.body)
-                if (lazyAccess != null) {
-                    holder.registerProblem(
-                        lazyAccess as PsiElement,
-                        "⚠️ Potential N+1 query: Lazy-loaded collection accessed in loop. " +
-                                "Consider using fetch join or @EntityGraph.",
-                        ProblemHighlightType.WARNING
-                    )
-                }
-            }
         }
     }
 
@@ -111,7 +60,7 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
                         holder.registerProblem(
                             access as PsiElement,
                             "⚠️ Potential N+1 query: Accessing lazy collection inside loop. " +
-                                    "Each iteration may trigger a separate query.",
+                                    "Each iteration may trigger a separate query. Consider using @EntityGraph or fetch join.",
                             ProblemHighlightType.WARNING
                         )
                     }
@@ -132,11 +81,11 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
                         val lazyAccess = findLazyFieldAccess(it)
                         if (lazyAccess != null) {
                             val message = when (methodName) {
-                                "map" -> "⚠️ Potential N+1 query: Lazy collection accessed in stream.map(). Consider using fetch join."
+                                "map" -> "⚠️ Potential N+1 query: Lazy collection accessed in stream.map(). Consider using @EntityGraph or fetch join."
                                 "flatMap" -> "⚠️ Potential N+1 query: Lazy collection accessed in stream.flatMap(). Consider using @EntityGraph or fetch join."
                                 "forEach" -> "⚠️ Potential N+1 query: Lazy collection accessed in stream.forEach(). Consider using @EntityGraph or fetch join."
                                 "filter" -> "⚠️ Potential N+1 query: Lazy collection accessed in stream.filter(). Consider using @EntityGraph or fetch join."
-                                else -> "⚠️ Potential N+1 query: Lazy collection accessed in stream operation."
+                                else -> "⚠️ Potential N+1 query: Lazy collection accessed in stream operation. Consider using @EntityGraph or fetch join."
                             }
                             holder.registerProblem(
                                 lazyAccess as PsiElement,
@@ -172,7 +121,7 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
         }
 
         if (resolved is PsiMethod) {
-            val field = findFieldFromGetter(resolved)
+            val field = PsiUtils.findFieldFromGetter(resolved)
             if (field != null) {
                 return checkFieldAnnotations(field)
             }
@@ -201,37 +150,6 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
         return hasLazyRelation
     }
 
-    private fun findFieldFromGetter(method: PsiMethod): PsiField? {
-        val methodName = method.name
-
-        val fieldName = when {
-            methodName.startsWith("get") && methodName.length > 3 -> {
-                methodName.substring(3).replaceFirstChar { it.lowercase() }
-            }
-            methodName.startsWith("is") && methodName.length > 2 -> {
-                methodName.substring(2).replaceFirstChar { it.lowercase() }
-            }
-            else -> return null
-        }
-
-        return method.containingClass?.findFieldByName(fieldName, false)
-    }
-
-    private fun isRepositoryQueryMethod(method: PsiMethod): Boolean {
-        val containingClass = method.containingClass ?: return false
-
-        val isRepository = containingClass.interfaces.any {
-            it.qualifiedName?.contains("Repository") == true
-        }
-
-        if (!isRepository) return false
-
-        val methodName = method.name
-        return methodName.startsWith("findAll") ||
-                methodName.startsWith("findBy") ||
-                methodName.startsWith("getBy") ||
-                methodName.startsWith("queryBy")
-    }
 
     private fun hasTransactionalAnnotation(method: PsiMethod): Boolean {
         val methodHasIt = method.annotations.any {
@@ -245,15 +163,80 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
         } ?: false
     }
 
-    private fun getFollowingStatements(statement: PsiStatement): List<PsiStatement> {
-        val parent = statement.parent as? PsiCodeBlock ?: return emptyList()
-        val statements = parent.statements
-        val index = statements.indexOf(statement)
+    override fun getStaticDescription(): String {
+        return """
+            Detects potential N+1 query problems when lazy-loaded collections are accessed in loops or stream operations.
+            <p>
+            <b>Problem:</b>
+            </p>
+            <p>
+            When you load entities with lazy-loaded relationships and then access those relationships in a loop or stream,
+            each iteration triggers a separate database query. This is known as the N+1 query problem:
+            1 query to fetch N entities + N queries to fetch their relationships = N+1 queries total.
+            </p>
+            <p>
+            <b>Problem Example:</b>
+            </p>
+            <pre>
+            @Transactional
+            public List&lt;UserDTO&gt; getUsers() {
+                List&lt;User&gt; users = userRepository.findAll();  // 1 query
 
-        return if (index >= 0 && index < statements.size - 1) {
-            statements.toList().subList(index + 1, statements.size)
-        } else {
-            emptyList()
-        }
+                return users.stream()
+                    .map(user -> new UserDTO(
+                        user.getName(),
+                        user.getPosts().size()  // ❌ N queries! (1 per user)
+                    ))
+                    .collect(Collectors.toList());
+            }
+            </pre>
+            <p>
+            If there are 100 users, this will execute 101 queries (1 for users + 100 for posts).
+            </p>
+            <p>
+            <b>Solutions:</b>
+            </p>
+            <ol>
+                <li><b>Use JOIN FETCH:</b> Fetch the relationship eagerly in a single query
+                    <pre>
+            @Query("SELECT u FROM User u LEFT JOIN FETCH u.posts")
+            List&lt;User&gt; findAllWithPosts();  // ✅ Single query
+                    </pre>
+                </li>
+                <li><b>Use @EntityGraph:</b> Define which relationships to fetch
+                    <pre>
+            @EntityGraph(attributePaths = {"posts"})
+            List&lt;User&gt; findAll();  // ✅ Single query with entity graph
+                    </pre>
+                </li>
+                <li><b>Use batch fetching:</b> Fetch relationships in batches
+                    <pre>
+            @BatchSize(size = 10)  // On the relationship field
+            @OneToMany(fetch = FetchType.LAZY)
+            private List&lt;Post&gt; posts;
+                    </pre>
+                </li>
+            </ol>
+            <p>
+            <b>Detection Scope:</b>
+            </p>
+            <ul>
+                <li>Lazy collections accessed in <code>for-each</code> loops</li>
+                <li>Lazy collections accessed in stream operations (<code>.map()</code>, <code>.flatMap()</code>, <code>.forEach()</code>)</li>
+                <li>Collections with <code>@OneToMany</code> or <code>@ManyToMany</code> annotations</li>
+                <li>Default fetch type is LAZY for these annotations</li>
+            </ul>
+            <p>
+            <b>Customization:</b>
+            </p>
+            <p>
+            You can configure which patterns to check in Settings → Tools → Spring Transaction Inspector:
+            </p>
+            <ul>
+                <li>Enable/disable N+1 query detection</li>
+                <li>Check in stream operations (.map, .flatMap)</li>
+                <li>Check in for-each loops</li>
+            </ul>
+        """.trimIndent()
     }
 }

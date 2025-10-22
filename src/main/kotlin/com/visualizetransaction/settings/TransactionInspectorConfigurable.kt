@@ -20,6 +20,9 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
     private val enablePrivateMethodDetection = JBCheckBox("Warn on private methods with @Transactional")
     private val enableFinalMethodDetection = JBCheckBox("Warn on final methods with @Transactional")
     private val enableStaticMethodDetection = JBCheckBox("Warn on static methods with @Transactional")
+    private val enableCheckedExceptionRollbackDetection = JBCheckBox("Warn on checked exceptions without rollbackFor")
+    private val enableAsyncTransactionalDetection = JBCheckBox("Detect @Async and @Transactional conflicts")
+    private val enableReadOnlyWriteCallDetection = JBCheckBox("Detect write method calls from readOnly transactions")
 
     // N+1 Checkboxes
     private val enableN1Detection = JBCheckBox("Enable N+1 query detection")
@@ -39,6 +42,9 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
         enablePrivateMethodDetection.isSelected = settings.enablePrivateMethodDetection
         enableFinalMethodDetection.isSelected = settings.enableFinalMethodDetection
         enableStaticMethodDetection.isSelected = settings.enableStaticMethodDetection
+        enableCheckedExceptionRollbackDetection.isSelected = settings.enableCheckedExceptionRollbackDetection
+        enableAsyncTransactionalDetection.isSelected = settings.enableAsyncTransactionalDetection
+        enableReadOnlyWriteCallDetection.isSelected = settings.enableReadOnlyWriteCallDetection
 
         enableN1Detection.isSelected = settings.enableN1Detection
         checkInStreamOperations.isSelected = settings.checkInStreamOperations
@@ -66,6 +72,9 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
             .addComponent(enablePrivateMethodDetection)
             .addComponent(enableFinalMethodDetection)
             .addComponent(enableStaticMethodDetection)
+            .addComponent(enableCheckedExceptionRollbackDetection)
+            .addComponent(enableAsyncTransactionalDetection)
+            .addComponent(enableReadOnlyWriteCallDetection)
 
             .addComponent(JSeparator(), 10)
 
@@ -100,6 +109,9 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
                 enablePrivateMethodDetection.isSelected != settings.enablePrivateMethodDetection ||
                 enableFinalMethodDetection.isSelected != settings.enableFinalMethodDetection ||
                 enableStaticMethodDetection.isSelected != settings.enableStaticMethodDetection ||
+                enableCheckedExceptionRollbackDetection.isSelected != settings.enableCheckedExceptionRollbackDetection ||
+                enableAsyncTransactionalDetection.isSelected != settings.enableAsyncTransactionalDetection ||
+                enableReadOnlyWriteCallDetection.isSelected != settings.enableReadOnlyWriteCallDetection ||
                 enableN1Detection.isSelected != settings.enableN1Detection ||
                 checkInStreamOperations.isSelected != settings.checkInStreamOperations ||
                 checkInLoops.isSelected != settings.checkInLoops ||
@@ -113,6 +125,9 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
         settings.state.enablePrivateMethodDetection = enablePrivateMethodDetection.isSelected
         settings.state.enableFinalMethodDetection = enableFinalMethodDetection.isSelected
         settings.state.enableStaticMethodDetection = enableStaticMethodDetection.isSelected
+        settings.state.enableCheckedExceptionRollbackDetection = enableCheckedExceptionRollbackDetection.isSelected
+        settings.state.enableAsyncTransactionalDetection = enableAsyncTransactionalDetection.isSelected
+        settings.state.enableReadOnlyWriteCallDetection = enableReadOnlyWriteCallDetection.isSelected
 
         settings.state.enableN1Detection = enableN1Detection.isSelected
         settings.state.checkInStreamOperations = checkInStreamOperations.isSelected
@@ -129,6 +144,9 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
         enablePrivateMethodDetection.isSelected = settings.enablePrivateMethodDetection
         enableFinalMethodDetection.isSelected = settings.enableFinalMethodDetection
         enableStaticMethodDetection.isSelected = settings.enableStaticMethodDetection
+        enableCheckedExceptionRollbackDetection.isSelected = settings.enableCheckedExceptionRollbackDetection
+        enableAsyncTransactionalDetection.isSelected = settings.enableAsyncTransactionalDetection
+        enableReadOnlyWriteCallDetection.isSelected = settings.enableReadOnlyWriteCallDetection
 
         enableN1Detection.isSelected = settings.enableN1Detection
         checkInStreamOperations.isSelected = settings.checkInStreamOperations
