@@ -105,7 +105,7 @@ public void processFile() throws IOException {
 }
 ```
 
-#### 6. **@Async and @Transactional Conflicts** ⚡ NEW
+#### 6. **@Async and @Transactional Conflicts**
 Detects three critical async-transaction patterns:
 
 **Pattern 1: @Async + @Transactional on same method**
@@ -138,7 +138,7 @@ public class UserService {
 }
 ```
 
-#### 7. **ReadOnly Transaction Calling Write Methods** ⚡ NEW
+#### 7. **ReadOnly Transaction Calling Write Methods**
 Detects when `@Transactional(readOnly=true)` methods call write-capable methods, causing runtime errors.
 
 ```java
@@ -329,7 +329,7 @@ Contributions are welcome! Here's how you can help:
 git clone https://github.com/closeup1202/spring-transaction-inspector-plugin.git
 cd spring-transaction-inspector-plugin
 ./gradlew runIde  # Launch IDE with plugin
-./gradlew test    # Run tests
+./gradlew test    # Run tests TODO: Some tests are currently failing; will fix later
 ```
 
 ## 📝 License
