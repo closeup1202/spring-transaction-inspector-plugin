@@ -24,6 +24,7 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
     private val enableAsyncTransactionalDetection = JBCheckBox("Detect @Async and @Transactional conflicts")
     private val enableReadOnlyWriteCallDetection = JBCheckBox("Detect write method calls from readOnly transactions")
     private val enableReadOnlyTransactionalDetection = JBCheckBox("Detect write operations in @Transactional(readOnly=true) methods")
+    private val enablePropagationConflictDetection = JBCheckBox("Detect transaction propagation conflicts (MANDATORY/NEVER/REQUIRES_NEW)")
 
     // N+1 Checkboxes
     private val enableN1Detection = JBCheckBox("Enable N+1 query detection")
@@ -47,6 +48,7 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
         enableAsyncTransactionalDetection.isSelected = settings.enableAsyncTransactionalDetection
         enableReadOnlyWriteCallDetection.isSelected = settings.enableReadOnlyWriteCallDetection
         enableReadOnlyTransactionalDetection.isSelected = settings.enableReadOnlyTransactionalDetection
+        enablePropagationConflictDetection.isSelected = settings.enablePropagationConflictDetection
 
         enableN1Detection.isSelected = settings.enableN1Detection
         checkInStreamOperations.isSelected = settings.checkInStreamOperations
@@ -78,6 +80,7 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
             .addComponent(enableAsyncTransactionalDetection)
             .addComponent(enableReadOnlyWriteCallDetection)
             .addComponent(enableReadOnlyTransactionalDetection)
+            .addComponent(enablePropagationConflictDetection)
 
             .addComponent(JSeparator(), 10)
 
@@ -116,6 +119,7 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
                 enableAsyncTransactionalDetection.isSelected != settings.enableAsyncTransactionalDetection ||
                 enableReadOnlyWriteCallDetection.isSelected != settings.enableReadOnlyWriteCallDetection ||
                 enableReadOnlyTransactionalDetection.isSelected != settings.enableReadOnlyTransactionalDetection ||
+                enablePropagationConflictDetection.isSelected != settings.enablePropagationConflictDetection ||
                 enableN1Detection.isSelected != settings.enableN1Detection ||
                 checkInStreamOperations.isSelected != settings.checkInStreamOperations ||
                 checkInLoops.isSelected != settings.checkInLoops ||
@@ -133,6 +137,7 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
         settings.state.enableAsyncTransactionalDetection = enableAsyncTransactionalDetection.isSelected
         settings.state.enableReadOnlyWriteCallDetection = enableReadOnlyWriteCallDetection.isSelected
         settings.state.enableReadOnlyTransactionalDetection = enableReadOnlyTransactionalDetection.isSelected
+        settings.state.enablePropagationConflictDetection = enablePropagationConflictDetection.isSelected
 
         settings.state.enableN1Detection = enableN1Detection.isSelected
         settings.state.checkInStreamOperations = checkInStreamOperations.isSelected
@@ -153,6 +158,7 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
         enableAsyncTransactionalDetection.isSelected = settings.enableAsyncTransactionalDetection
         enableReadOnlyWriteCallDetection.isSelected = settings.enableReadOnlyWriteCallDetection
         enableReadOnlyTransactionalDetection.isSelected = settings.enableReadOnlyTransactionalDetection
+        enablePropagationConflictDetection.isSelected = settings.enablePropagationConflictDetection
 
         enableN1Detection.isSelected = settings.enableN1Detection
         checkInStreamOperations.isSelected = settings.checkInStreamOperations

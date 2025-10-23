@@ -17,7 +17,7 @@ This plugin catches these issues **while you code**, before they reach productio
 
 ## ✨ Features
 
-### 🔍 Comprehensive Inspections
+### 🔍 8 Comprehensive Inspections
 
 #### 1. **AOP Proxy Bypass Detection**
 Detects when `@Transactional` methods are called within the same class, causing transaction settings to be ignored.
@@ -50,30 +50,74 @@ public class OrderService {
 }
 ```
 
-#### 3. **N+1 Query Detection**
+#### 3. **Transaction Propagation Conflict Detection** 🆕
+Detects MANDATORY/NEVER/REQUIRES_NEW conflicts that cause runtime exceptions or data inconsistency.
+
+**MANDATORY - Called without transaction:**
+```java
+public void updateInventory() {  // No @Transactional
+    decreaseStock(productId, 10);  // ❌ ERROR!
+}
+
+@Transactional(propagation = Propagation.MANDATORY)
+public void decreaseStock(Long productId, int quantity) {
+    // Throws IllegalTransactionStateException at runtime!
+}
+```
+
+**NEVER - Called within transaction:**
+```java
+@Transactional
+public void registerUser(User user) {
+    emailService.sendEmail(user);  // ❌ ERROR!
+}
+
+@Transactional(propagation = Propagation.NEVER)
+public void sendEmail(User user) {
+    // Throws IllegalTransactionStateException at runtime!
+}
+```
+
+**REQUIRES_NEW - Data inconsistency risk:**
+```java
+@Transactional
+public void createOrder(Order order) {
+    orderRepository.save(order);           // Transaction 1
+    paymentService.processPayment(order);  // ⚠️ Transaction 2 (independent!)
+    // If exception here, order rolls back but payment is committed!
+}
+
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void processPayment(Order order) { }
+```
+
+#### 4. **N+1 Query Detection** (Enhanced!)
 Identifies lazy-loaded relationships accessed in loops/streams that cause performance issues.
+
+Now detects **all JPA relationship types:**
+- `@OneToMany` (LAZY by default)
+- `@ManyToMany` (LAZY by default)
+- `@ManyToOne(fetch = LAZY)` 🆕
+- `@OneToOne(fetch = LAZY)` 🆕
 
 ```java
 @Transactional
-public List<UserDTO> getUsers() {
-    List<User> users = userRepository.findAll();  // 1 query
+public void printPosts() {
+    List<Post> posts = postRepository.findAll();  // 1 query
 
-    return users.stream()
-        .map(user -> new UserDTO(
-            user.getName(),
-            user.getPosts().size()  // ⚠️ N queries! (1 per user)
-        ))
-        .collect(Collectors.toList());
+    for (Post post : posts) {
+        post.getUser().getName();  // ⚠️ N queries! (1 per post)
+    }
 }
 ```
 
 **Solution:**
 ```java
-@Query("SELECT u FROM User u LEFT JOIN FETCH u.posts")
-List<User> findAllWithPosts();  // ✅ Single query with JOIN
+@Query("SELECT p FROM Post p JOIN FETCH p.user")
+List<Post> findAllWithUser();  // ✅ Single query with JOIN
 ```
 
-#### 4. **ReadOnly Transaction Write Operations**
+#### 5. **ReadOnly Transaction Write Operations**
 Detects write operations (save/update/delete) in `@Transactional(readOnly=true)` methods.
 
 ```java
@@ -85,7 +129,7 @@ public void processData() {
 }
 ```
 
-#### 5. **Checked Exception Rollback**
+#### 6. **Checked Exception Rollback**
 Warns when methods throw checked exceptions without `rollbackFor` configuration.
 
 ```java
@@ -105,7 +149,7 @@ public void processFile() throws IOException {
 }
 ```
 
-#### 6. **@Async and @Transactional Conflicts**
+#### 7. **@Async and @Transactional Conflicts**
 Detects three critical async-transaction patterns:
 
 **Pattern 1: @Async + @Transactional on same method**
@@ -138,7 +182,7 @@ public class UserService {
 }
 ```
 
-#### 7. **ReadOnly Transaction Calling Write Methods**
+#### 8. **ReadOnly Transaction Calling Write Methods**
 Detects when `@Transactional(readOnly=true)` methods call write-capable methods, causing runtime errors.
 
 ```java
@@ -217,6 +261,7 @@ Fine-grained control over which inspections to enable:
 - ✓ Warn on checked exceptions without rollbackFor
 - ✓ Detect @Async and @Transactional conflicts
 - ✓ Detect write method calls from readOnly transactions
+- ✓ Detect transaction propagation conflicts (MANDATORY/NEVER/REQUIRES_NEW)
 - ✓ Enable N+1 query detection
   - ✓ Check in stream operations (.map, .flatMap)
   - ✓ Check in for-each loops

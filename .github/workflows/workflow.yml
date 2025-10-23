@@ -40,27 +40,17 @@ jobs:
         with:
           name: Release ${{ github.ref_name }}
           body: |
-            ## Version 1.0.1 - Major Improvements
-
-            ### Code Quality Improvements
-            - Fixed memory leak in AddRollbackForFix (FixRegistry cleanup)
-            - Refactored duplicate code - extracted common utilities to PsiUtils
-
-            ### Accuracy Enhancements
-            - Type-based write operation detection (95%+ accuracy, reduced false positives by 60-80%)
-            - Smart detection of Spring Data Repository, JPA EntityManager, and @Repository classes
-            - Support for MongoDB, R2DBC, and Reactive repositories
-
-            ### New Features
-            - Added settings toggle for ReadOnly transactional inspection
-            - Performance optimization with repository class caching
-            - Intention preview support with @SafeFieldForPreview
-
-            ### Consistency
-            - All inspections now have enable/disable settings for better control
-
+            ### Version 1.0.2 - Enhanced Detection
+            #### New Inspection
+                   - Transaction Propagation Conflict Detection (MANDATORY/NEVER/REQUIRES_NEW)
+                   - Detects runtime exceptions before they happen
+                   - Warns about data inconsistency risks with REQUIRES_NEW
+            #### N+1 Query Detection Improvements
+                   - Now detects @ManyToOne(fetch = LAZY) relationships
+                   - Now detects @OneToOne(fetch = LAZY) relationships
+                   - More accurate detection based on fetch type defaults
+            #### Total Inspections: 8 comprehensive checks for Spring transaction anti-patterns
             ---
-
             🔗 [View on JetBrains Marketplace](https://plugins.jetbrains.com/plugin/28789-spring-transaction-inspector)
           draft: false
           prerelease: false

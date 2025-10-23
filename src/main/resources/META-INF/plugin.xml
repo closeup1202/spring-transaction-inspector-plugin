@@ -1,18 +1,19 @@
 <idea-plugin>
     <id>com.visualize-transaction</id>
     <name>Spring Transaction Inspector</name>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
     <vendor email="closeup1202@gmail.com" url="https://github.com/closeup1202">closeup1202</vendor>
 
     <description><![CDATA[
         <h2>Spring Transaction Inspector</h2>
         <p>Catch Spring @Transactional pitfalls before they reach production! This plugin performs static analysis to detect common transaction anti-patterns and configuration issues.</p>
 
-        <h3>🎯 Key Features</h3>
+        <h3>🎯 Key Features (8 Inspections)</h3>
         <ul>
             <li><b>AOP Proxy Bypass Detection</b> - Warns when calling @Transactional methods within the same class</li>
             <li><b>Invalid Method Modifiers</b> - Detects @Transactional on private/final/static methods that Spring cannot intercept</li>
-            <li><b>N+1 Query Detection</b> - Identifies potential performance issues with lazy-loaded collections in loops and streams</li>
+            <li><b>Transaction Propagation Conflicts</b> - Detects MANDATORY/NEVER/REQUIRES_NEW conflicts that cause runtime exceptions or data inconsistency</li>
+            <li><b>N+1 Query Detection</b> - Identifies lazy-loaded relationships (@OneToMany, @ManyToOne, etc.) accessed in loops and streams</li>
             <li><b>ReadOnly Transaction Violations</b> - Detects write operations in @Transactional(readOnly=true) methods</li>
             <li><b>Checked Exception Rollback</b> - Warns when checked exceptions won't trigger rollback without proper configuration</li>
             <li><b>@Async + @Transactional Conflicts</b> - Detects when transactions won't propagate to async threads</li>
@@ -34,23 +35,37 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <h3>Version 1.0.0 - Initial Release</h3>
+        <h3>Version 1.0.2 - Enhanced Detection (Latest)</h3>
         <ul>
-            <li><b>7 Comprehensive Inspections:</b>
+            <li><b>New Inspection:</b> Transaction Propagation Conflict Detection
                 <ul>
-                    <li>AOP proxy bypass detection (same-class @Transactional calls)</li>
-                    <li>Invalid method modifiers (private/final/static)</li>
-                    <li>N+1 query detection in loops and stream operations</li>
-                    <li>Write operations in readOnly transactions</li>
-                    <li>Checked exceptions without rollbackFor configuration</li>
-                    <li>@Async and @Transactional conflicts</li>
-                    <li>ReadOnly transactions calling write-capable methods</li>
+                    <li>MANDATORY: Detects calls without active transaction (prevents IllegalTransactionStateException)</li>
+                    <li>NEVER: Detects calls within transactional context (prevents IllegalTransactionStateException)</li>
+                    <li>REQUIRES_NEW: Warns about independent transaction creation and data inconsistency risks</li>
                 </ul>
             </li>
-            <li><b>Smart Quick Fixes:</b> One-click solutions for common issues</li>
-            <li><b>Visual Indicators:</b> Gutter icons with different icons for read-only transactions</li>
-            <li><b>Customizable Settings:</b> Fine-grained control over each inspection</li>
-            <li><b>Detailed Documentation:</b> Each inspection includes comprehensive explanation and examples</li>
+            <li><b>N+1 Query Detection Improvements:</b>
+                <ul>
+                    <li>Now detects @ManyToOne(fetch = LAZY) - single entity relationships</li>
+                    <li>Now detects @OneToOne(fetch = LAZY) - single entity relationships</li>
+                    <li>Accurate detection based on fetch type defaults (LAZY vs EAGER)</li>
+                </ul>
+            </li>
+            <li><b>Total Inspections:</b> 8 comprehensive checks for Spring @Transactional anti-patterns</li>
+        </ul>
+
+        <h3>Version 1.0.1 - Major Improvements</h3>
+        <ul>
+            <li>Fixed memory leak in AddRollbackForFix</li>
+            <li>Type-based write operation detection (95%+ accuracy)</li>
+            <li>Repository class caching for performance</li>
+            <li>All inspections now have settings toggles</li>
+        </ul>
+
+        <h3>Version 1.0.0 - Initial Release</h3>
+        <ul>
+            <li>7 inspections for @Transactional anti-patterns</li>
+            <li>Quick Fixes, Gutter icons, Customizable settings</li>
         </ul>
     ]]></change-notes>
 
@@ -118,6 +133,13 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.visualizetransaction.inspections.ReadOnlyTransactionWriteCallInspection"/>
+        <localInspection
+                language="JAVA"
+                displayName="Transaction propagation conflict (MANDATORY/NEVER/REQUIRES_NEW)"
+                groupName="Spring Transaction Inspector"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.TransactionalPropagationConflictInspection"/>
         <projectConfigurable
                 parentId="tools"
                 instance="com.visualizetransaction.settings.TransactionInspectorConfigurable"

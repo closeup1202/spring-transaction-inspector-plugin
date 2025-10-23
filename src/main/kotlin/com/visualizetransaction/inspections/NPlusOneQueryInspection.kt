@@ -132,13 +132,41 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
 
     private fun checkFieldAnnotations(field: PsiField): Boolean {
         return field.annotations.any { annotation ->
-            if (!PsiUtils.isLazyJpaRelationshipAnnotation(annotation)) {
+            val qualifiedName = annotation.qualifiedName ?: return@any false
+
+            // 기본값이 LAZY인 어노테이션
+            val lazyByDefault = qualifiedName in listOf(
+                "javax.persistence.OneToMany",
+                "jakarta.persistence.OneToMany",
+                "javax.persistence.ManyToMany",
+                "jakarta.persistence.ManyToMany",
+                "javax.persistence.ElementCollection",
+                "jakarta.persistence.ElementCollection"
+            )
+
+            // 기본값이 EAGER인 어노테이션
+            val eagerByDefault = qualifiedName in listOf(
+                "javax.persistence.ManyToOne",
+                "jakarta.persistence.ManyToOne",
+                "javax.persistence.OneToOne",
+                "jakarta.persistence.OneToOne"
+            )
+
+            if (!lazyByDefault && !eagerByDefault) {
                 return@any false
             }
 
-            // Check if fetch is explicitly set to LAZY (or default)
             val fetchValue = annotation.findAttributeValue("fetch")?.text
-            fetchValue?.contains("LAZY") != false
+
+            when {
+                // Lazy by default: fetch가 없거나 LAZY면 true
+                lazyByDefault -> fetchValue?.contains("EAGER") != true
+
+                // Eager by default: 명시적으로 LAZY일 때만 true
+                eagerByDefault -> fetchValue?.contains("LAZY") == true
+
+                else -> false
+            }
         }
     }
 

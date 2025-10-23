@@ -22,6 +22,7 @@ class TransactionInspectorSettings : PersistentStateComponent<TransactionInspect
         var enableAsyncTransactionalDetection: Boolean = true,
         var enableReadOnlyWriteCallDetection: Boolean = true,
         var enableReadOnlyTransactionalDetection: Boolean = true,
+        var enablePropagationConflictDetection: Boolean = true,
 
         var enableN1Detection: Boolean = true,
         var checkInStreamOperations: Boolean = true,
