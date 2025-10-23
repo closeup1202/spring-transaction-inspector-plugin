@@ -131,36 +131,20 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
     }
 
     private fun checkFieldAnnotations(field: PsiField): Boolean {
-        val hasLazyRelation = field.annotations.any { annotation ->
-            val qualifiedName = annotation.qualifiedName ?: return@any false
-
-            when {
-                qualifiedName == "javax.persistence.OneToMany" ||
-                        qualifiedName == "jakarta.persistence.OneToMany" ||
-                        qualifiedName == "javax.persistence.ManyToMany" ||
-                        qualifiedName == "jakarta.persistence.ManyToMany" -> {
-                    val fetchValue = annotation.findAttributeValue("fetch")?.text
-                    fetchValue?.contains("LAZY") != false
-                }
-
-                else -> false
+        return field.annotations.any { annotation ->
+            if (!PsiUtils.isLazyJpaRelationshipAnnotation(annotation)) {
+                return@any false
             }
-        }
 
-        return hasLazyRelation
+            // Check if fetch is explicitly set to LAZY (or default)
+            val fetchValue = annotation.findAttributeValue("fetch")?.text
+            fetchValue?.contains("LAZY") != false
+        }
     }
 
 
     private fun hasTransactionalAnnotation(method: PsiMethod): Boolean {
-        val methodHasIt = method.annotations.any {
-            it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
-        }
-
-        if (methodHasIt) return true
-
-        return method.containingClass?.annotations?.any {
-            it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
-        } ?: false
+        return PsiUtils.hasTransactionalAnnotation(method)
     }
 
     override fun getStaticDescription(): String {

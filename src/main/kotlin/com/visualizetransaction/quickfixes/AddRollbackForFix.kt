@@ -1,21 +1,29 @@
 package com.visualizetransaction.quickfixes
 
+import com.intellij.codeInsight.intention.FileModifier
 import com.intellij.codeInspection.LocalQuickFixOnPsiElement
 import com.intellij.openapi.project.Project
 import com.intellij.psi.*
 
 class AddRollbackForFix private constructor(
     annotation: PsiAnnotation,
-    private val fixId: String
+    @FileModifier.SafeFieldForPreview
+    private val exceptionTypes: List<String>
 ) : LocalQuickFixOnPsiElement(annotation) {
 
-    override fun getFamilyName(): String = "Add rollbackFor attribute"
-    override fun getText(): String = "Add rollbackFor attribute"
+    override fun getFamilyName(): String {
+        return if (exceptionTypes.size == 1) {
+            "Add rollbackFor = ${exceptionTypes[0]}.class"
+        } else {
+            "Add rollbackFor = {${exceptionTypes.joinToString(", ") { "$it.class" }}}"
+        }
+    }
+
+    override fun getText(): String = familyName
 
     override fun invoke(project: Project, file: PsiFile, startElement: PsiElement, endElement: PsiElement) {
         val annotation = startElement as? PsiAnnotation ?: return
         val factory = JavaPsiFacade.getElementFactory(project)
-        val exceptionTypes = FixRegistry.getExceptionTypes(fixId)
 
         val rollbackForValue = if (exceptionTypes.size == 1) {
             "${exceptionTypes[0]}.class"
@@ -77,22 +85,7 @@ class AddRollbackForFix private constructor(
 
     companion object {
         fun create(annotation: PsiAnnotation, exceptionTypes: List<String>): AddRollbackForFix {
-            val fixId = FixRegistry.register(exceptionTypes)
-            return AddRollbackForFix(annotation, fixId)
+            return AddRollbackForFix(annotation, exceptionTypes)
         }
-    }
-}
-
-private object FixRegistry {
-    private val registry = mutableMapOf<String, List<String>>()
-
-    fun register(exceptionTypes: List<String>): String {
-        val id = exceptionTypes.joinToString("-") + "-" + System.nanoTime()
-        registry[id] = exceptionTypes
-        return id
-    }
-
-    fun getExceptionTypes(fixId: String): List<String> {
-        return registry[fixId] ?: listOf("Exception")
     }
 }

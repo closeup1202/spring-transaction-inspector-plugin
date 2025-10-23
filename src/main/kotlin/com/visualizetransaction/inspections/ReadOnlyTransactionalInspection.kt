@@ -5,6 +5,7 @@ import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
+import com.visualizetransaction.settings.TransactionInspectorSettings
 import com.visualizetransaction.utils.PsiUtils
 
 class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
@@ -14,6 +15,12 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
 
             override fun visitMethod(method: PsiMethod) {
                 super.visitMethod(method)
+
+                // Check if this inspection is enabled in settings
+                val settings = TransactionInspectorSettings.getInstance(holder.project).state
+                if (!settings.enableReadOnlyTransactionalDetection) {
+                    return
+                }
 
                 val transactionalAnnotation = method.annotations.find {
                     it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
@@ -65,26 +72,12 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
     }
 
     private fun isWriteOperation(methodName: String, method: PsiMethod?): Boolean {
-        // Common repository write method names
-        val writePatterns = listOf(
-            "save", "saveAll", "saveAndFlush",
-            "update", "updateAll",
-            "delete", "deleteAll", "deleteById", "deleteInBatch",
-            "remove", "removeAll",
-            "persist", "merge", "flush"
-        )
-
-        if (writePatterns.any { methodName.lowercase().contains(it) }) {
-            return true
-        }
-
-        method?.returnType
-
-        return false
+        // Use type-based verification for better accuracy
+        return PsiUtils.isWriteOperationMethod(methodName, method)
     }
 
     private fun isCollectionModificationOperation(methodName: String): Boolean {
-        return methodName in listOf("add", "addAll", "remove", "removeAll", "clear", "addFirst", "addLast")
+        return PsiUtils.isCollectionModificationMethod(methodName)
     }
 
     private fun representsLazyCollection(expression: PsiExpression): Boolean {
@@ -107,18 +100,7 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
     }
 
     private fun hasLazyAnnotation(field: PsiField): Boolean {
-        return field.annotations.any { annotation ->
-            val qualifiedName = annotation.qualifiedName ?: return@any false
-
-            qualifiedName in listOf(
-                "javax.persistence.OneToMany",
-                "jakarta.persistence.OneToMany",
-                "javax.persistence.ManyToMany",
-                "jakarta.persistence.ManyToMany",
-                "javax.persistence.ElementCollection",
-                "jakarta.persistence.ElementCollection"
-            )
-        }
+        return PsiUtils.hasLazyJpaRelationshipAnnotation(field)
     }
 
 

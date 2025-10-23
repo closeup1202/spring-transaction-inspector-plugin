@@ -1,0 +1,53 @@
+name: Publish IntelliJ Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: 21
+          distribution: 'temurin'
+
+      - name: Build Plugin
+        run: ./gradlew buildPlugin
+
+      - name: Publish to JetBrains Marketplace
+        run: ./gradlew publishPlugin
+        env:
+          JETBRAINS_TOKEN: ${{ secrets.JETBRAINS_TOKEN }}
+
+      - name: Extract Version
+        run: echo "VERSION=${GITHUB_REF##*/}" | sed 's/^v//' >> $GITHUB_ENV
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          body: |
+            Changelog for ${{ github.ref_name }}:
+            - Update changelog here
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Plugin Artifact to Release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: build/distributions/spring-transaction-inspector-${{ env.VERSION }}.zip
+          asset_name: spring-transaction-inspector-${{ env.VERSION }}.zip
+          asset_content_type: application/zip

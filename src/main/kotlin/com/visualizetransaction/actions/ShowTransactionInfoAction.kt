@@ -42,7 +42,7 @@ class ShowTransactionInfoAction : AnAction(){
                 project,
                 """
                     Method: ${method.name}
-                    Transaction: 👌
+                    Transaction: attached to the method
                     
                     $info
                 """.trimIndent(),

@@ -8,6 +8,7 @@ import com.intellij.psi.util.PsiTreeUtil
 import com.visualizetransaction.quickfixes.RemoveAsyncAnnotationFix
 import com.visualizetransaction.quickfixes.RemoveTransactionalAnnotationFix
 import com.visualizetransaction.settings.TransactionInspectorSettings
+import com.visualizetransaction.utils.PsiUtils
 
 class AsyncTransactionalConflictInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -47,8 +48,8 @@ class AsyncTransactionalConflictInspection : AbstractBaseJavaLocalInspectionTool
             it.qualifiedName == "org.springframework.scheduling.annotation.Async"
         } ?: return
 
-        method.annotations.firstOrNull {
-            it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
+        val transactionalAnnotation = method.annotations.firstOrNull {
+            PsiUtils.isTransactionalAnnotation(it)
         } ?: return
 
         holder.registerProblem(
@@ -150,32 +151,19 @@ class AsyncTransactionalConflictInspection : AbstractBaseJavaLocalInspectionTool
         val field = resolvedClass.findFieldByName(fieldName, false) ?: return false
 
         return field.annotations.any { annotation ->
-            when (annotation.qualifiedName) {
-                "javax.persistence.OneToMany",
-                "javax.persistence.ManyToMany",
-                "javax.persistence.ManyToOne",
-                "javax.persistence.OneToOne",
-                "jakarta.persistence.OneToMany",
-                "jakarta.persistence.ManyToMany",
-                "jakarta.persistence.ManyToOne",
-                "jakarta.persistence.OneToOne" -> {
-                    val fetchValue = annotation.findAttributeValue("fetch")
-                    val fetchType = fetchValue?.text
-                    when (annotation.qualifiedName) {
-                        "javax.persistence.OneToMany",
-                        "javax.persistence.ManyToMany",
-                        "jakarta.persistence.OneToMany",
-                        "jakarta.persistence.ManyToMany" -> {
-                            fetchType == null || !fetchType.contains("EAGER")
-                        }
+            if (!PsiUtils.isJpaRelationshipAnnotation(annotation)) {
+                return@any false
+            }
 
-                        else -> {
-                            fetchType?.contains("LAZY") == true
-                        }
-                    }
-                }
+            val fetchValue = annotation.findAttributeValue("fetch")
+            val fetchType = fetchValue?.text
 
-                else -> false
+            // OneToMany and ManyToMany are LAZY by default
+            if (PsiUtils.isLazyJpaRelationshipAnnotation(annotation)) {
+                fetchType == null || !fetchType.contains("EAGER")
+            } else {
+                // OneToOne and ManyToOne are EAGER by default, only LAZY if explicitly set
+                fetchType?.contains("LAZY") == true
             }
         }
     }
