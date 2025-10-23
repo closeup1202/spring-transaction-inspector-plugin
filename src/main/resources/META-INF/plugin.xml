@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.visualize-transaction</id>
     <name>Spring Transaction Inspector</name>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <vendor email="closeup1202@gmail.com" url="https://github.com/closeup1202">closeup1202</vendor>
 
     <description><![CDATA[
