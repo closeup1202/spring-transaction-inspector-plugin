@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.visualize-transaction</id>
     <name>Spring Transaction Inspector</name>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <vendor email="closeup1202@gmail.com" url="https://github.com/closeup1202">closeup1202</vendor>
 
     <description><![CDATA[
@@ -35,7 +35,21 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <h3>Version 1.0.2 - Enhanced Detection (Latest)</h3>
+        <h3>Version 1.0.3 - Jakarta EE Support (Latest)</h3>
+        <ul>
+            <li><b>Jakarta Transaction Support:</b> Now detects jakarta.transaction.Transactional and javax.transaction.Transactional
+                <ul>
+                    <li>AOP Proxy Bypass Detection</li>
+                    <li>Invalid Method Modifiers (private/final/static)</li>
+                    <li>@Async + @Transactional Conflicts</li>
+                    <li>Gutter Icons</li>
+                    <li>Transaction Info Action</li>
+                </ul>
+            </li>
+            <li><b>IDE Compatibility:</b> Extended support to IntelliJ IDEA 2025.3 (build 253.*)</li>
+        </ul>
+
+        <h3>Version 1.0.2 - Enhanced Detection</h3>
         <ul>
             <li><b>New Inspection:</b> Transaction Propagation Conflict Detection
                 <ul>
@@ -69,7 +83,7 @@
         </ul>
     ]]></change-notes>
 
-    <idea-version since-build="242" until-build="252.*"/>
+    <idea-version since-build="242" until-build="253.*"/>
 
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.java</depends>

@@ -40,16 +40,13 @@ jobs:
         with:
           name: Release ${{ github.ref_name }}
           body: |
-            ### Version 1.0.2 - Enhanced Detection
-            #### New Inspection
-                   - Transaction Propagation Conflict Detection (MANDATORY/NEVER/REQUIRES_NEW)
-                   - Detects runtime exceptions before they happen
-                   - Warns about data inconsistency risks with REQUIRES_NEW
-            #### N+1 Query Detection Improvements
-                   - Now detects @ManyToOne(fetch = LAZY) relationships
-                   - Now detects @OneToOne(fetch = LAZY) relationships
-                   - More accurate detection based on fetch type defaults
-            #### Total Inspections: 8 comprehensive checks for Spring transaction anti-patterns
+            ### Version 1.0.3 - Jakarta EE Support
+            #### Jakarta Transaction Support
+                   - Now detects `jakarta.transaction.Transactional` (Jakarta EE 9+)
+                   - Now detects `javax.transaction.Transactional` (Java EE / Jakarta EE 8-)
+                   - Supported inspections: AOP Proxy Bypass, Invalid Modifiers, @Async Conflicts, Gutter Icons
+            #### IDE Compatibility
+                   - Extended support to IntelliJ IDEA 2025.3 (build 253.*)
             ---
             🔗 [View on JetBrains Marketplace](https://plugins.jetbrains.com/plugin/28789-spring-transaction-inspector)
           draft: false

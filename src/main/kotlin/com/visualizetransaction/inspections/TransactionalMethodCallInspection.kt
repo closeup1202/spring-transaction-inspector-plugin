@@ -51,7 +51,11 @@ class TransactionalMethodCallInspection : AbstractBaseJavaLocalInspectionTool() 
 
     private fun hasTransactionalAnnotation(method: PsiMethod): Boolean {
         return method.annotations.any {
-            it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
+            it.qualifiedName in listOf(
+                "org.springframework.transaction.annotation.Transactional",
+                "jakarta.transaction.Transactional",
+                "javax.transaction.Transactional"
+            )
         }
     }
 

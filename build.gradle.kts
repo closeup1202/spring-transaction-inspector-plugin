@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.visualizetransaction"
-version = "1.0.2"
+version = "1.0.3"
 
 repositories {
     mavenCentral()
@@ -33,40 +33,38 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "252.*"
+            untilBuild = "253.*"
         }
 
         changeNotes = """
+            <h3>Version 1.0.3 - Jakarta EE Support</h3>
+            <ul>
+                <li><b>Jakarta Transaction Support:</b> Now detects jakarta.transaction.Transactional and javax.transaction.Transactional
+                    <ul>
+                        <li>AOP Proxy Bypass Detection</li>
+                        <li>Invalid Method Modifiers (private/final/static)</li>
+                        <li>@Async + @Transactional Conflicts</li>
+                        <li>Gutter Icons</li>
+                        <li>Transaction Info Action</li>
+                    </ul>
+                </li>
+                <li><b>IDE Compatibility:</b> Extended support to IntelliJ IDEA 2025.3 (build 253.*)</li>
+            </ul>
+
             <h3>Version 1.0.2 - Enhanced Detection</h3>
             <ul>
-                <li><b>New Inspection:</b>
-                    <ul>
-                        <li>Transaction Propagation Conflict Detection (MANDATORY/NEVER/REQUIRES_NEW)</li>
-                        <li>Detects runtime exceptions before they happen</li>
-                        <li>Warns about data inconsistency risks with REQUIRES_NEW</li>
-                    </ul>
-                </li>
-                <li><b>N+1 Query Detection Improvements:</b>
-                    <ul>
-                        <li>Now detects @ManyToOne(fetch = LAZY) relationships</li>
-                        <li>Now detects @OneToOne(fetch = LAZY) relationships</li>
-                        <li>More accurate detection based on fetch type defaults</li>
-                    </ul>
-                </li>
-                <li><b>Total Inspections:</b> 8 comprehensive checks for Spring transaction anti-patterns</li>
+                <li><b>New Inspection:</b> Transaction Propagation Conflict Detection (MANDATORY/NEVER/REQUIRES_NEW)</li>
+                <li><b>N+1 Query Detection Improvements:</b> @ManyToOne/@OneToOne(fetch = LAZY) support</li>
             </ul>
 
             <h3>Version 1.0.1 - Major Improvements</h3>
             <ul>
-                <li><b>Code Quality:</b> Fixed memory leak, refactored duplicate code</li>
-                <li><b>Accuracy:</b> Type-based detection (95%+ accuracy, 60-80% fewer false positives)</li>
-                <li><b>Features:</b> Settings toggles, repository caching, intention preview support</li>
+                <li>Fixed memory leak, type-based detection, settings toggles</li>
             </ul>
 
             <h3>Version 1.0.0 - Initial Release</h3>
             <ul>
                 <li>7 inspections for @Transactional anti-patterns</li>
-                <li>Gutter icons, Quick Fixes, Customizable settings</li>
             </ul>
         """.trimIndent()
     }

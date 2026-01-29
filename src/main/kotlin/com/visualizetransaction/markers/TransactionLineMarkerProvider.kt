@@ -51,7 +51,11 @@ class TransactionLineMarkerProvider : LineMarkerProvider {
 
     private fun findTransactionalAnnotation(element: PsiModifierListOwner): PsiAnnotation? {
         return element.annotations.firstOrNull { annotation ->
-            annotation.qualifiedName == "org.springframework.transaction.annotation.Transactional"
+            annotation.qualifiedName in listOf(
+                "org.springframework.transaction.annotation.Transactional",
+                "jakarta.transaction.Transactional",
+                "javax.transaction.Transactional"
+            )
         }
     }
 

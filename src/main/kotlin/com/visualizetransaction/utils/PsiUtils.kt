@@ -228,10 +228,15 @@ object PsiUtils {
     }
 
     /**
-     * Check if an annotation is a Spring @Transactional annotation.
+     * Check if an annotation is a @Transactional annotation.
+     * Supports Spring, Jakarta EE 9+, and Java EE/Jakarta EE 8-.
      */
     fun isTransactionalAnnotation(annotation: PsiAnnotation): Boolean {
-        return annotation.qualifiedName == "org.springframework.transaction.annotation.Transactional"
+        return annotation.qualifiedName in listOf(
+            "org.springframework.transaction.annotation.Transactional",
+            "jakarta.transaction.Transactional",
+            "javax.transaction.Transactional"
+        )
     }
 
     /**

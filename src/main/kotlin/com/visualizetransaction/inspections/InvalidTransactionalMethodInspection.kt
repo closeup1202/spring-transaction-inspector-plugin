@@ -18,7 +18,11 @@ class InvalidTransactionalMethodInspection : AbstractBaseJavaLocalInspectionTool
                 super.visitMethod(method)
 
                 val transactional = method.annotations.firstOrNull {
-                    it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
+                    it.qualifiedName in listOf(
+                        "org.springframework.transaction.annotation.Transactional",
+                        "jakarta.transaction.Transactional",
+                        "javax.transaction.Transactional"
+                    )
                 } ?: return
 
                 val settings = TransactionInspectorSettings.getInstance(holder.project).state
