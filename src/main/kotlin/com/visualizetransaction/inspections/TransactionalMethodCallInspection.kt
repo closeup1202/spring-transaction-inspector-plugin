@@ -7,6 +7,7 @@ import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 import com.visualizetransaction.quickfixes.SuppressWarningFix
 import com.visualizetransaction.settings.TransactionInspectorSettings
+import com.visualizetransaction.utils.PsiUtils
 
 class TransactionalMethodCallInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -28,7 +29,7 @@ class TransactionalMethodCallInspection : AbstractBaseJavaLocalInspectionTool() 
                     return
                 }
 
-                val hasTransactional = hasTransactionalAnnotation(calledMethod)
+                val hasTransactional = PsiUtils.hasTransactionalAnnotation(calledMethod)
                 if (!hasTransactional) {
                     return
                 }
@@ -37,26 +38,84 @@ class TransactionalMethodCallInspection : AbstractBaseJavaLocalInspectionTool() 
                 val isThisCall = qualifier == null || qualifier is PsiThisExpression
 
                 if (isThisCall) {
-                    holder.registerProblem(
-                        expression.methodExpression as PsiElement,
-                        "⚠️ Same-class @Transactional method call bypasses Spring AOP proxy. " +
-                                "The @Transactional annotation on '${calledMethod.name}' will be ignored.",
-                        ProblemHighlightType.WARNING,
-                        SuppressWarningFix()
+                    // Check if caller has @Transactional
+                    val callerHasTransactional = PsiUtils.hasTransactionalAnnotation(callingMethod)
+
+                    // Check if called method has special propagation
+                    val propagation = getPropagation(calledMethod)
+                    val hasSpecialPropagation = propagation in listOf(
+                        "REQUIRES_NEW", "MANDATORY", "NEVER", "NOT_SUPPORTED"
                     )
+
+                    // Differentiate severity based on context
+                    if (callerHasTransactional && !hasSpecialPropagation) {
+                        // Scenario 1: Caller has @Transactional, called method has no special propagation
+                        // This is usually correct - the annotation is redundant but will join existing transaction
+                        holder.registerProblem(
+                            expression.methodExpression as PsiElement,
+                            "ℹ️ Same-class @Transactional method call. " +
+                                    "The @Transactional annotation on '${calledMethod.name}' is redundant but will join the existing transaction from '${callingMethod.name}'.",
+                            ProblemHighlightType.WEAK_WARNING,
+                            SuppressWarningFix()
+                        )
+                    } else if (hasSpecialPropagation) {
+                        // Scenario 2: Called method has special propagation (REQUIRES_NEW, etc.)
+                        // This is a problem - the special behavior won't work
+                        holder.registerProblem(
+                            expression.methodExpression as PsiElement,
+                            "⚠️ Same-class @Transactional method call bypasses Spring AOP proxy. " +
+                                    "The propagation=$propagation on '${calledMethod.name}' will be ignored. " +
+                                    "Consider extracting to a separate service.",
+                            ProblemHighlightType.WARNING,
+                            SuppressWarningFix()
+                        )
+                    } else {
+                        // Scenario 3: Caller has no @Transactional
+                        // The annotation will be completely ignored
+                        holder.registerProblem(
+                            expression.methodExpression as PsiElement,
+                            "⚠️ Same-class @Transactional method call bypasses Spring AOP proxy. " +
+                                    "The @Transactional annotation on '${calledMethod.name}' will be ignored.",
+                            ProblemHighlightType.WARNING,
+                            SuppressWarningFix()
+                        )
+                    }
                 }
             }
         }
     }
 
-    private fun hasTransactionalAnnotation(method: PsiMethod): Boolean {
-        return method.annotations.any {
-            it.qualifiedName in listOf(
-                "org.springframework.transaction.annotation.Transactional",
-                "jakarta.transaction.Transactional",
-                "javax.transaction.Transactional"
-            )
+    private fun getPropagation(method: PsiMethod): String? {
+        // Check method-level Spring @Transactional first (only Spring has propagation attribute)
+        val methodAnnotation = method.getAnnotation(
+            "org.springframework.transaction.annotation.Transactional"
+        )
+
+        if (methodAnnotation != null) {
+            val propagationAttr = methodAnnotation.findAttributeValue("propagation")
+                ?: return null  // No propagation attribute = REQUIRED (default)
+
+            // "Propagation.REQUIRES_NEW" → "REQUIRES_NEW"
+            return propagationAttr.text.substringAfterLast(".")
         }
+
+        // Check class-level Spring @Transactional
+        val containingClass = method.containingClass
+        val classAnnotation = containingClass?.getAnnotation(
+            "org.springframework.transaction.annotation.Transactional"
+        )
+
+        if (classAnnotation != null) {
+            val propagationAttr = classAnnotation.findAttributeValue("propagation")
+                ?: return null  // No propagation attribute = REQUIRED (default)
+
+            // "Propagation.REQUIRES_NEW" → "REQUIRES_NEW"
+            return propagationAttr.text.substringAfterLast(".")
+        }
+
+        // Jakarta and javax.transaction don't have propagation attribute
+        // They have fixed propagation behavior (REQUIRED)
+        return null
     }
 
     override fun getStaticDescription(): String {

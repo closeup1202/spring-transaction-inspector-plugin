@@ -21,7 +21,7 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
                     return
                 }
 
-                if (!hasTransactionalAnnotation(method)) {
+                if (!PsiUtils.hasTransactionalAnnotation(method)) {
                     return
                 }
 
@@ -168,11 +168,6 @@ class NPlusOneQueryInspection : AbstractBaseJavaLocalInspectionTool() {
                 else -> false
             }
         }
-    }
-
-
-    private fun hasTransactionalAnnotation(method: PsiMethod): Boolean {
-        return PsiUtils.hasTransactionalAnnotation(method)
     }
 
     override fun getStaticDescription(): String {

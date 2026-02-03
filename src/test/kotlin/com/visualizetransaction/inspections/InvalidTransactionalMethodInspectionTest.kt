@@ -1,13 +1,14 @@
 package com.visualizetransaction.inspections
-
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+
+
 
 /**
  * Test suite for InvalidTransactionalMethodInspection
  *
  * Tests detection of @Transactional on methods with invalid modifiers
  */
-class InvalidTransactionalMethodInspectionTest : BasePlatformTestCase() {
+class InvalidTransactionalMethodInspectionTest : BaseInspectionTest() {
 
     override fun setUp() {
         super.setUp()

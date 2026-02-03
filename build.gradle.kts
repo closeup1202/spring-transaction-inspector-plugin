@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.visualizetransaction"
-version = "1.0.3"
+version = "1.0.4"
 
 repositories {
     mavenCentral()
@@ -27,6 +27,14 @@ dependencies {
 
     // JUnit 4 for BasePlatformTestCase (which extends junit.framework.TestCase)
     testImplementation("junit:junit:4.13.2")
+
+    // Spring Framework annotations for tests
+    testImplementation("org.springframework:spring-tx:6.1.3")
+    testImplementation("org.springframework:spring-context:6.1.3")
+
+    // JPA annotations for tests
+    testImplementation("jakarta.persistence:jakarta.persistence-api:3.1.0")
+    testImplementation("jakarta.transaction:jakarta.transaction-api:2.0.1")
 }
 
 intellijPlatform {
@@ -37,17 +45,21 @@ intellijPlatform {
         }
 
         changeNotes = """
-            <h3>Version 1.0.3 - Jakarta EE Support</h3>
+            <h3>Version 1.0.4 - Improved Same-Class Call Detection</h3>
             <ul>
-                <li><b>Jakarta Transaction Support:</b> Now detects jakarta.transaction.Transactional and javax.transaction.Transactional
+                <li><b>Context-Aware Warnings:</b> Same-class @Transactional method call inspection now differentiates between scenarios:
                     <ul>
-                        <li>AOP Proxy Bypass Detection</li>
-                        <li>Invalid Method Modifiers (private/final/static)</li>
-                        <li>@Async + @Transactional Conflicts</li>
-                        <li>Gutter Icons</li>
-                        <li>Transaction Info Action</li>
+                        <li><b>INFO level:</b> When caller has @Transactional and no special propagation - annotation is redundant but joins existing transaction (expected behavior)</li>
+                        <li><b>WARNING level:</b> When called method has special propagation (REQUIRES_NEW, MANDATORY, etc.) - won't work as expected</li>
+                        <li><b>WARNING level:</b> When caller has no @Transactional - annotation will be completely ignored</li>
                     </ul>
                 </li>
+                <li><b>Better Developer Experience:</b> Reduces false positives and helps developers understand when same-class calls are acceptable vs. problematic</li>
+            </ul>
+
+            <h3>Version 1.0.3 - Jakarta EE Support</h3>
+            <ul>
+                <li><b>Jakarta Transaction Support:</b> Now detects jakarta.transaction.Transactional and javax.transaction.Transactional</li>
                 <li><b>IDE Compatibility:</b> Extended support to IntelliJ IDEA 2025.3 (build 253.*)</li>
             </ul>
 

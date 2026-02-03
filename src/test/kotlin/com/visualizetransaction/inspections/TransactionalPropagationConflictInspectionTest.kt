@@ -1,6 +1,7 @@
 package com.visualizetransaction.inspections
-
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+
+
 
 /**
  * Test suite for TransactionalPropagationConflictInspection
@@ -10,7 +11,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
  * - NEVER: Must NOT be called within transaction
  * - REQUIRES_NEW: Creates independent transaction
  */
-class TransactionalPropagationConflictInspectionTest : BasePlatformTestCase() {
+class TransactionalPropagationConflictInspectionTest : BaseInspectionTest() {
 
     override fun setUp() {
         super.setUp()

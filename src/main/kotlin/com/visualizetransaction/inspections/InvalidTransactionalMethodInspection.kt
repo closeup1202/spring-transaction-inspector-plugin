@@ -9,6 +9,7 @@ import com.visualizetransaction.quickfixes.RemoveFinalModifierFix
 import com.visualizetransaction.quickfixes.RemoveStaticModifierFix
 import com.visualizetransaction.quickfixes.RemoveTransactionalAnnotationFix
 import com.visualizetransaction.settings.TransactionInspectorSettings
+import com.visualizetransaction.utils.PsiUtils
 
 class InvalidTransactionalMethodInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -18,11 +19,7 @@ class InvalidTransactionalMethodInspection : AbstractBaseJavaLocalInspectionTool
                 super.visitMethod(method)
 
                 val transactional = method.annotations.firstOrNull {
-                    it.qualifiedName in listOf(
-                        "org.springframework.transaction.annotation.Transactional",
-                        "jakarta.transaction.Transactional",
-                        "javax.transaction.Transactional"
-                    )
+                    PsiUtils.isTransactionalAnnotation(it)
                 } ?: return
 
                 val settings = TransactionInspectorSettings.getInstance(holder.project).state

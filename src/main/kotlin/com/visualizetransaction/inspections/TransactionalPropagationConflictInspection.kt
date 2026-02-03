@@ -6,6 +6,7 @@ import com.intellij.codeInspection.ProblemsHolder
 import com.intellij.psi.*
 import com.intellij.psi.util.PsiTreeUtil
 import com.visualizetransaction.settings.TransactionInspectorSettings
+import com.visualizetransaction.utils.PsiUtils
 
 class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspectionTool() {
 
@@ -23,8 +24,8 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
                     PsiMethod::class.java
                 ) ?: return
 
-                // Check if the called method has @Transactional
-                if (!hasTransactionalAnnotation(calledMethod)) return
+                // Check if the called method has Spring @Transactional (only Spring has propagation)
+                if (!hasSpringTransactionalAnnotation(calledMethod)) return
 
                 // Get propagation type
                 val propagation = getPropagation(calledMethod) ?: return
@@ -44,8 +45,8 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
         callingMethod: PsiMethod,
         holder: ProblemsHolder
     ) {
-        // MANDATORY requires active transaction
-        if (!isCallerTransactional(callingMethod)) {
+        // MANDATORY requires active transaction (Spring or Jakarta/JTA)
+        if (!PsiUtils.hasTransactionalAnnotation(callingMethod)) {
             holder.registerProblem(
                 expression.methodExpression as PsiElement,
                 "❌ Method requires active transaction (MANDATORY propagation) but caller has no @Transactional. " +
@@ -60,8 +61,8 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
         callingMethod: PsiMethod,
         holder: ProblemsHolder
     ) {
-        // NEVER must NOT be called within transaction
-        if (isCallerTransactional(callingMethod)) {
+        // NEVER must NOT be called within transaction (Spring or Jakarta/JTA)
+        if (PsiUtils.hasTransactionalAnnotation(callingMethod)) {
             holder.registerProblem(
                 expression.methodExpression as PsiElement,
                 "❌ Method with NEVER propagation called from transactional context. " +
@@ -77,7 +78,7 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
         holder: ProblemsHolder
     ) {
         // REQUIRES_NEW creates an independent transaction
-        if (isCallerTransactional(callingMethod)) {
+        if (PsiUtils.hasTransactionalAnnotation(callingMethod)) {
             holder.registerProblem(
                 expression.methodExpression as PsiElement,
                 "⚠️ Method with REQUIRES_NEW creates independent transaction. " +
@@ -88,7 +89,7 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
         }
     }
 
-    private fun hasTransactionalAnnotation(method: PsiMethod): Boolean {
+    private fun hasSpringTransactionalAnnotation(method: PsiMethod): Boolean {
         return method.annotations.any {
             it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
         }
@@ -104,21 +105,6 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
 
         // "Propagation.REQUIRES_NEW" → "REQUIRES_NEW"
         return propagationAttr.text.substringAfterLast(".")
-    }
-
-    private fun isCallerTransactional(method: PsiMethod): Boolean {
-        // Check method-level @Transactional
-        if (method.hasAnnotation("org.springframework.transaction.annotation.Transactional")) {
-            return true
-        }
-
-        // Check class-level @Transactional
-        val containingClass = method.containingClass
-        if (containingClass?.hasAnnotation("org.springframework.transaction.annotation.Transactional") == true) {
-            return true
-        }
-
-        return false
     }
 
     override fun getStaticDescription(): String {

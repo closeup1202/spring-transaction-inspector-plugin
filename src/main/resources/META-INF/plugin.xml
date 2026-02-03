@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>com.visualize-transaction</id>
     <name>Spring Transaction Inspector</name>
-    <version>1.0.3</version>
+    <version>1.0.4</version>
     <vendor email="closeup1202@gmail.com" url="https://github.com/closeup1202">closeup1202</vendor>
 
     <description><![CDATA[
@@ -35,7 +35,19 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <h3>Version 1.0.3 - Jakarta EE Support (Latest)</h3>
+        <h3>Version 1.0.4 - Improved Same-Class Call Detection (Latest)</h3>
+        <ul>
+            <li><b>Context-Aware Warnings:</b> Same-class @Transactional method call inspection now differentiates between scenarios:
+                <ul>
+                    <li><b>INFO level:</b> When caller has @Transactional and no special propagation - annotation is redundant but joins existing transaction (expected behavior)</li>
+                    <li><b>WARNING level:</b> When called method has special propagation (REQUIRES_NEW, MANDATORY, etc.) - won't work as expected</li>
+                    <li><b>WARNING level:</b> When caller has no @Transactional - annotation will be completely ignored</li>
+                </ul>
+            </li>
+            <li><b>Better Developer Experience:</b> Reduces false positives and helps developers understand when same-class calls are acceptable vs. problematic</li>
+        </ul>
+
+        <h3>Version 1.0.3 - Jakarta EE Support</h3>
         <ul>
             <li><b>Jakarta Transaction Support:</b> Now detects jakarta.transaction.Transactional and javax.transaction.Transactional
                 <ul>

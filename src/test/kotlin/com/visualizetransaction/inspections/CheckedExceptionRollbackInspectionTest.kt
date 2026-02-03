@@ -1,9 +1,10 @@
 package com.visualizetransaction.inspections
-
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+
+
 import com.visualizetransaction.settings.TransactionInspectorSettings
 
-class CheckedExceptionRollbackInspectionTest : BasePlatformTestCase() {
+class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
 
     override fun setUp() {
         super.setUp()

@@ -1,13 +1,14 @@
 package com.visualizetransaction.inspections
-
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+
+
 
 /**
  * Test suite for ReadOnlyTransactionalInspection
  *
  * Tests detection of write operations in @Transactional(readOnly=true) methods
  */
-class ReadOnlyTransactionalInspectionTest : BasePlatformTestCase() {
+class ReadOnlyTransactionalInspectionTest : BaseInspectionTest() {
 
     override fun setUp() {
         super.setUp()

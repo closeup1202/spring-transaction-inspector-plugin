@@ -1,13 +1,14 @@
 package com.visualizetransaction.inspections
-
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
+
+
 
 /**
  * Test suite for NPlusOneQueryInspection
  *
  * Tests various N+1 query patterns to ensure detection accuracy
  */
-class NPlusOneQueryInspectionTest : BasePlatformTestCase() {
+class NPlusOneQueryInspectionTest : BaseInspectionTest() {
 
     override fun setUp() {
         super.setUp()
