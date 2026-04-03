@@ -40,14 +40,10 @@ jobs:
         with:
           name: Release ${{ github.ref_name }}
           body: |
-            ### Version 1.0.4 - Improved Same-Class Call Detection
-            #### Context-Aware Warnings
-            - **INFO level:** When caller has `@Transactional` and no special propagation - annotation is redundant but joins existing transaction (expected behavior)
-            - **WARNING level:** When called method has special propagation (`REQUIRES_NEW`, `MANDATORY`, etc.) - won't work as expected
-            - **WARNING level:** When caller has no `@Transactional` - annotation will be completely ignored
+            ### Version 1.0.5 - IDE Compatibility Update
+            #### IDE Compatibility
+            - Extended support to IntelliJ IDEA 2026.1 (build 261.*)
 
-            #### Better Developer Experience
-            - Reduces false positives and helps developers understand when same-class calls are acceptable vs. problematic
             ---
             🔗 [View on JetBrains Marketplace](https://plugins.jetbrains.com/plugin/28789-spring-transaction-inspector)
           draft: false

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.visualizetransaction"
-version = "1.0.4"
+version = "1.0.5"
 
 repositories {
     mavenCentral()
@@ -41,10 +41,15 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "253.*"
+            untilBuild = "261.*"
         }
 
         changeNotes = """
+            <h3>Version 1.0.5 - IDE Compatibility Update</h3>
+            <ul>
+                <li><b>IDE Compatibility:</b> Extended support to IntelliJ IDEA 2026.1 (build 261.*)</li>
+            </ul>
+
             <h3>Version 1.0.4 - Improved Same-Class Call Detection</h3>
             <ul>
                 <li><b>Context-Aware Warnings:</b> Same-class @Transactional method call inspection now differentiates between scenarios:
