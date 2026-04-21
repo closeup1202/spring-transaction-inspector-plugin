@@ -40,9 +40,9 @@ jobs:
         with:
           name: Release ${{ github.ref_name }}
           body: |
-            ### Version 1.0.5 - IDE Compatibility Update
-            #### IDE Compatibility
-            - Extended support to IntelliJ IDEA 2026.1 (build 261.*)
+            ### Version 1.0.6 - Build Toolchain Update
+            #### Changes
+            - Upgraded to Gradle 9.4 and IntelliJ Platform Gradle Plugin 2.12.0 to fix plugin archive extraction issue on IntelliJ IDEA 2026.1 (build 261.*)
 
             ---
             🔗 [View on JetBrains Marketplace](https://plugins.jetbrains.com/plugin/28789-spring-transaction-inspector)

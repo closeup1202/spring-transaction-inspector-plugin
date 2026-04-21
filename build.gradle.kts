@@ -1,11 +1,11 @@
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "2.1.0"
-    id("org.jetbrains.intellij.platform") version "2.7.1"
+    id("org.jetbrains.kotlin.jvm") version "2.2.0"
+    id("org.jetbrains.intellij.platform") version "2.12.0"
 }
 
 group = "com.visualizetransaction"
-version = "1.0.5"
+version = "1.0.6"
 
 repositories {
     mavenCentral()
@@ -45,6 +45,11 @@ intellijPlatform {
         }
 
         changeNotes = """
+            <h3>Version 1.0.6 - Build Toolchain Update</h3>
+            <ul>
+                <li><b>Build:</b> Upgraded to Gradle 9.4 and IntelliJ Platform Gradle Plugin 2.12.0 to fix plugin archive extraction issue on IntelliJ IDEA 2026.1 (build 261.*)</li>
+            </ul>
+
             <h3>Version 1.0.5 - IDE Compatibility Update</h3>
             <ul>
                 <li><b>IDE Compatibility:</b> Extended support to IntelliJ IDEA 2026.1 (build 261.*)</li>
