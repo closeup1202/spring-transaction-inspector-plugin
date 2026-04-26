@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.visualizetransaction"
-version = "1.0.6"
+version = "1.1.0"
 
 repositories {
     mavenCentral()
@@ -20,8 +20,8 @@ dependencies {
     intellijPlatform {
         create("IU", "2025.2.1")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
+        testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Plugin.Java)
 
-        // Add necessary plugin dependencies for compilation here, example:
         bundledPlugin("com.intellij.java")
     }
 
@@ -45,6 +45,18 @@ intellijPlatform {
         }
 
         changeNotes = """
+            <h3>Version 1.1.0 - Quality &amp; Reliability Release</h3>
+            <ul>
+                <li><b>Jakarta/javax parity:</b> Propagation conflict detection (MANDATORY/NEVER/REQUIRES_NEW) and <code>rollbackOn</code> awareness now work for <code>jakarta.transaction.Transactional</code> and <code>javax.transaction.Transactional</code>, not only Spring.</li>
+                <li><b>Deeper async detection:</b> Lazy-relationship access in <code>@Async</code> methods is now caught anywhere in a call chain (e.g. <code>user.getOrders().get(0).getItems()</code>), not just first-level getters.</li>
+                <li><b>OSIV-friendly N+1:</b> New optional setting <i>"Also detect outside @Transactional (OSIV)"</i> for projects relying on Open-EntityManager-In-View.</li>
+                <li><b>Robust readOnly handling:</b> <code>@Transactional(readOnly = ...)</code> is now resolved via constant evaluation, so <code>Boolean.TRUE</code>, parenthesized expressions and constant references all work.</li>
+                <li><b>Memory:</b> Replaced an unbounded repository cache with <code>CachedValuesManager</code> tied to <code>PsiModificationTracker</code>, eliminating stale <code>PsiClass</code> retention on long sessions.</li>
+                <li><b>Quick-fix bug:</b> <i>Remove @Transactional</i> on an @Async/@Transactional pair was deleting <code>@Async</code> instead of <code>@Transactional</code> &mdash; fixed.</li>
+                <li><b>Performance:</b> Each inspection short-circuits at the visitor entry when its toggle is disabled.</li>
+                <li><b>CI:</b> Tests now run on every PR; release notes are no longer hard-coded in the workflow.</li>
+            </ul>
+
             <h3>Version 1.0.6 - Build Toolchain Update</h3>
             <ul>
                 <li><b>Build:</b> Upgraded to Gradle 9.4 and IntelliJ Platform Gradle Plugin 2.12.0 to fix plugin archive extraction issue on IntelliJ IDEA 2026.1 (build 261.*)</li>

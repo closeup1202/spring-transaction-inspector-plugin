@@ -3,7 +3,11 @@ package com.visualizetransaction.inspections
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.*
+import com.intellij.psi.JavaElementVisitor
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiMethodCallExpression
 import com.intellij.psi.util.PsiTreeUtil
 import com.visualizetransaction.settings.TransactionInspectorSettings
 import com.visualizetransaction.utils.PsiUtils
@@ -11,27 +15,24 @@ import com.visualizetransaction.utils.PsiUtils
 class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
+        val settings = TransactionInspectorSettings.getInstance(holder.project).state
+        if (!settings.enablePropagationConflictDetection) {
+            return PsiElementVisitor.EMPTY_VISITOR
+        }
+
         return object : JavaElementVisitor() {
             override fun visitMethodCallExpression(expression: PsiMethodCallExpression) {
                 super.visitMethodCallExpression(expression)
 
-                val settings = TransactionInspectorSettings.getInstance(holder.project).state
-                if (!settings.enablePropagationConflictDetection) return
-
                 val calledMethod = expression.resolveMethod() ?: return
+                if (PsiUtils.findTransactionalAnnotation(calledMethod) == null) return
+
                 val callingMethod = PsiTreeUtil.getParentOfType(
                     expression,
                     PsiMethod::class.java
                 ) ?: return
 
-                // Check if the called method has Spring @Transactional (only Spring has propagation)
-                if (!hasSpringTransactionalAnnotation(calledMethod)) return
-
-                // Get propagation type
-                val propagation = getPropagation(calledMethod) ?: return
-
-                // Check for conflicts
-                when (propagation) {
+                when (PsiUtils.getPropagation(calledMethod)) {
                     "MANDATORY" -> checkMandatory(expression, callingMethod, holder)
                     "NEVER" -> checkNever(expression, callingMethod, holder)
                     "REQUIRES_NEW" -> checkRequiresNew(expression, callingMethod, holder)
@@ -45,7 +46,6 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
         callingMethod: PsiMethod,
         holder: ProblemsHolder
     ) {
-        // MANDATORY requires active transaction (Spring or Jakarta/JTA)
         if (!PsiUtils.hasTransactionalAnnotation(callingMethod)) {
             holder.registerProblem(
                 expression.methodExpression as PsiElement,
@@ -61,7 +61,6 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
         callingMethod: PsiMethod,
         holder: ProblemsHolder
     ) {
-        // NEVER must NOT be called within transaction (Spring or Jakarta/JTA)
         if (PsiUtils.hasTransactionalAnnotation(callingMethod)) {
             holder.registerProblem(
                 expression.methodExpression as PsiElement,
@@ -77,7 +76,6 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
         callingMethod: PsiMethod,
         holder: ProblemsHolder
     ) {
-        // REQUIRES_NEW creates an independent transaction
         if (PsiUtils.hasTransactionalAnnotation(callingMethod)) {
             holder.registerProblem(
                 expression.methodExpression as PsiElement,
@@ -89,165 +87,20 @@ class TransactionalPropagationConflictInspection : AbstractBaseJavaLocalInspecti
         }
     }
 
-    private fun hasSpringTransactionalAnnotation(method: PsiMethod): Boolean {
-        return method.annotations.any {
-            it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
-        }
-    }
-
-    private fun getPropagation(method: PsiMethod): String? {
-        val annotation = method.getAnnotation(
-            "org.springframework.transaction.annotation.Transactional"
-        ) ?: return null
-
-        val propagationAttr = annotation.findAttributeValue("propagation")
-            ?: return null  // No propagation attribute = REQUIRED (default)
-
-        // "Propagation.REQUIRES_NEW" → "REQUIRES_NEW"
-        return propagationAttr.text.substringAfterLast(".")
-    }
-
     override fun getStaticDescription(): String {
         return """
             Detects transaction propagation conflicts that will cause runtime exceptions or unexpected behavior.
+            Supports Spring (<code>propagation</code> attribute) and Jakarta/javax (<code>value</code> attribute holding TxType).
             <p>
-            <b>MANDATORY Propagation:</b>
+            <b>MANDATORY:</b> must be called within an active transaction or it throws IllegalTransactionStateException.
             </p>
             <p>
-            A method with <code>@Transactional(propagation = Propagation.MANDATORY)</code> MUST be called
-            within an active transaction. If called without a transaction, it throws
-            <code>IllegalTransactionStateException</code>.
+            <b>NEVER:</b> must NOT be called from a transactional context or it throws IllegalTransactionStateException.
             </p>
             <p>
-            <b>Example - MANDATORY Violation:</b>
+            <b>REQUIRES_NEW:</b> always creates a new, independent transaction. The parent transaction's
+            commit/rollback no longer covers this call, which can cause data inconsistency.
             </p>
-            <pre>
-            @Service
-            public class InventoryService {
-                // ❌ No @Transactional
-                public void updateInventory(Long productId) {
-                    decreaseStock(productId, 10);  // Will throw exception!
-                }
-
-                @Transactional(propagation = Propagation.MANDATORY)
-                public void decreaseStock(Long productId, int quantity) {
-                    // This MUST run within a transaction
-                    Product product = productRepository.findById(productId);
-                    product.setStock(product.getStock() - quantity);
-                }
-            }
-            </pre>
-            <p>
-            <b>Fix:</b> Add <code>@Transactional</code> to the caller method.
-            </p>
-            <pre>
-            @Transactional  // ✅ Now it works
-            public void updateInventory(Long productId) {
-                decreaseStock(productId, 10);
-            }
-            </pre>
-            <hr>
-            <p>
-            <b>NEVER Propagation:</b>
-            </p>
-            <p>
-            A method with <code>@Transactional(propagation = Propagation.NEVER)</code> must NOT be called
-            within a transaction. If called within a transaction, it throws
-            <code>IllegalTransactionStateException</code>.
-            </p>
-            <p>
-            <b>Example - NEVER Violation:</b>
-            </p>
-            <pre>
-            @Service
-            public class UserService {
-                @Transactional  // ❌ Has transaction
-                public void registerUser(User user) {
-                    userRepository.save(user);
-                    emailService.sendWelcomeEmail(user);  // Will throw exception!
-                }
-            }
-
-            @Service
-            public class EmailService {
-                @Transactional(propagation = Propagation.NEVER)
-                public void sendWelcomeEmail(User user) {
-                    // This must NOT run in a transaction
-                    // (external API calls shouldn't be in transactions)
-                    externalEmailService.send(user.getEmail(), "Welcome!");
-                }
-            }
-            </pre>
-            <p>
-            <b>Fix:</b> Move the call outside the transaction or use events.
-            </p>
-            <pre>
-            @Service
-            public class UserService {
-                @Transactional
-                public void registerUser(User user) {
-                    userRepository.save(user);
-                    // Transaction commits here
-                }
-
-                // Separate method without transaction
-                public void sendWelcomeEmail(User user) {
-                    emailService.sendWelcomeEmail(user);  // ✅ No transaction
-                }
-            }
-            </pre>
-            <hr>
-            <p>
-            <b>REQUIRES_NEW Propagation:</b>
-            </p>
-            <p>
-            A method with <code>@Transactional(propagation = Propagation.REQUIRES_NEW)</code> always creates
-            a new, independent transaction. This can lead to data inconsistency if not used carefully.
-            </p>
-            <p>
-            <b>Example - REQUIRES_NEW Risk:</b>
-            </p>
-            <pre>
-            @Service
-            public class OrderService {
-                @Transactional
-                public void createOrder(Order order) {
-                    orderRepository.save(order);  // Transaction 1
-
-                    paymentService.processPayment(order);  // Transaction 2 (independent)
-
-                    order.setStatus("PAID");
-                    // ⚠️ If exception here, order rolls back but payment is already committed!
-                }
-            }
-
-            @Service
-            public class PaymentService {
-                @Transactional(propagation = Propagation.REQUIRES_NEW)
-                public void processPayment(Order order) {
-                    Payment payment = new Payment(order.getAmount());
-                    paymentRepository.save(payment);
-                    // This commits immediately, separate from parent transaction
-                }
-            }
-            </pre>
-            <p>
-            <b>When to use REQUIRES_NEW:</b>
-            </p>
-            <ul>
-                <li>Audit logging (must persist even if main transaction fails)</li>
-                <li>Independent counters/statistics</li>
-                <li>Operations that should succeed regardless of parent transaction outcome</li>
-            </ul>
-            <p>
-            <b>Customization:</b>
-            </p>
-            <p>
-            You can disable this check in Settings → Tools → Spring Transaction Inspector:
-            </p>
-            <ul>
-                <li>Enable transaction propagation conflict detection</li>
-            </ul>
         """.trimIndent()
     }
 }

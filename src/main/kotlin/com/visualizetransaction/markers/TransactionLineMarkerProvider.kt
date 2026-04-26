@@ -3,9 +3,14 @@ package com.visualizetransaction.markers
 import com.intellij.codeInsight.daemon.LineMarkerInfo
 import com.intellij.codeInsight.daemon.LineMarkerProvider
 import com.intellij.openapi.editor.markup.GutterIconRenderer
-import com.intellij.psi.*
+import com.intellij.psi.PsiAnnotation
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiIdentifier
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifierListOwner
 import com.visualizetransaction.TransactionIcons
 import com.visualizetransaction.settings.TransactionInspectorSettings
+import com.visualizetransaction.utils.PsiUtils
 import javax.swing.Icon
 
 class TransactionLineMarkerProvider : LineMarkerProvider {
@@ -18,15 +23,13 @@ class TransactionLineMarkerProvider : LineMarkerProvider {
 
         val project = element.project
         val settings = TransactionInspectorSettings.getInstance(project).state
-        if (!settings.showGutterIcons) {
-            return null
-        }
+        if (!settings.showGutterIcons) return null
 
         val transactional = findTransactionalAnnotation(parent)
             ?: parent.containingClass?.let { findTransactionalAnnotation(it) }
             ?: return null
 
-        val isReadOnly = isReadOnly(transactional)
+        val isReadOnly = PsiUtils.isReadOnly(transactional)
         val icon = getIcon(isReadOnly, settings)
         val tooltip = buildTooltip(parent, transactional)
 
@@ -50,41 +53,22 @@ class TransactionLineMarkerProvider : LineMarkerProvider {
     }
 
     private fun findTransactionalAnnotation(element: PsiModifierListOwner): PsiAnnotation? {
-        return element.annotations.firstOrNull { annotation ->
-            annotation.qualifiedName in listOf(
-                "org.springframework.transaction.annotation.Transactional",
-                "jakarta.transaction.Transactional",
-                "javax.transaction.Transactional"
-            )
-        }
-    }
-
-    private fun isReadOnly(annotation: PsiAnnotation): Boolean {
-        val readOnly = annotation.findAttributeValue("readOnly")
-        return readOnly?.text == "true"
+        return element.annotations.firstOrNull { PsiUtils.isTransactionalAnnotation(it) }
     }
 
     private fun buildTooltip(method: PsiMethod, annotation: PsiAnnotation): String {
         val parts = mutableListOf<String>()
-
         parts.add("🔷 Transactional Method: ${method.name}")
 
-        // Propagation
-        val propagation = annotation.findAttributeValue("propagation")?.text
-            ?: "REQUIRED"
+        val propagationAttr = when (annotation.qualifiedName) {
+            PsiUtils.SPRING_TRANSACTIONAL -> "propagation"
+            else -> "value"
+        }
+        val propagation = annotation.findAttributeValue(propagationAttr)?.text ?: "REQUIRED"
         parts.add("Propagation: $propagation")
 
-        // ReadOnly
-        val readOnly = annotation.findAttributeValue("readOnly")?.text
-        if (readOnly != null) {
-            parts.add("ReadOnly: $readOnly")
-        }
-
-        // Timeout
-        val timeout = annotation.findAttributeValue("timeout")?.text
-        if (timeout != null) {
-            parts.add("Timeout: $timeout")
-        }
+        annotation.findAttributeValue("readOnly")?.let { parts.add("ReadOnly: ${it.text}") }
+        annotation.findAttributeValue("timeout")?.let { parts.add("Timeout: ${it.text}") }
 
         return parts.joinToString("\n")
     }

@@ -27,6 +27,7 @@ class TransactionInspectorSettings : PersistentStateComponent<TransactionInspect
         var enableN1Detection: Boolean = true,
         var checkInStreamOperations: Boolean = true,
         var checkInLoops: Boolean = true,
+        var checkN1OutsideTransactional: Boolean = false,
 
         var showGutterIcons: Boolean = true,
         var showReadOnlyWithDifferentIcon: Boolean = true

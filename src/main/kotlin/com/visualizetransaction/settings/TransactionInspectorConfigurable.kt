@@ -10,161 +10,109 @@ import java.awt.BorderLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JSeparator
+import kotlin.reflect.KMutableProperty1
 
 class TransactionInspectorConfigurable(private val project: Project) : Configurable {
 
+    private data class Toggle(
+        val label: String,
+        val property: KMutableProperty1<TransactionInspectorSettings.State, Boolean>,
+        val checkbox: JBCheckBox = JBCheckBox(label),
+        val indented: Boolean = false,
+        val parent: KMutableProperty1<TransactionInspectorSettings.State, Boolean>? = null
+    )
+
+    private val inspectionToggles = listOf(
+        Toggle("Detect same-class @Transactional method calls", TransactionInspectorSettings.State::enableSameClassCallDetection),
+        Toggle("Warn on private methods with @Transactional", TransactionInspectorSettings.State::enablePrivateMethodDetection),
+        Toggle("Warn on final methods with @Transactional", TransactionInspectorSettings.State::enableFinalMethodDetection),
+        Toggle("Warn on static methods with @Transactional", TransactionInspectorSettings.State::enableStaticMethodDetection),
+        Toggle("Warn on checked exceptions without rollbackFor", TransactionInspectorSettings.State::enableCheckedExceptionRollbackDetection),
+        Toggle("Detect @Async and @Transactional conflicts", TransactionInspectorSettings.State::enableAsyncTransactionalDetection),
+        Toggle("Detect write method calls from readOnly transactions", TransactionInspectorSettings.State::enableReadOnlyWriteCallDetection),
+        Toggle("Detect write operations in @Transactional(readOnly=true) methods", TransactionInspectorSettings.State::enableReadOnlyTransactionalDetection),
+        Toggle("Detect transaction propagation conflicts (MANDATORY/NEVER/REQUIRES_NEW)", TransactionInspectorSettings.State::enablePropagationConflictDetection)
+    )
+
+    private val n1Toggles = listOf(
+        Toggle("Enable N+1 query detection", TransactionInspectorSettings.State::enableN1Detection),
+        Toggle("Check in stream operations (.map, .flatMap)", TransactionInspectorSettings.State::checkInStreamOperations,
+            indented = true, parent = TransactionInspectorSettings.State::enableN1Detection),
+        Toggle("Check in for-each loops", TransactionInspectorSettings.State::checkInLoops,
+            indented = true, parent = TransactionInspectorSettings.State::enableN1Detection),
+        Toggle("Also detect outside @Transactional (OSIV)", TransactionInspectorSettings.State::checkN1OutsideTransactional,
+            indented = true, parent = TransactionInspectorSettings.State::enableN1Detection)
+    )
+
+    private val gutterToggles = listOf(
+        Toggle("Show gutter icons for @Transactional methods", TransactionInspectorSettings.State::showGutterIcons),
+        Toggle("Show different icon for readOnly transactions", TransactionInspectorSettings.State::showReadOnlyWithDifferentIcon,
+            indented = true, parent = TransactionInspectorSettings.State::showGutterIcons)
+    )
+
+    private val allToggles = inspectionToggles + n1Toggles + gutterToggles
+
     private var mainPanel: JPanel? = null
-
-    // Inspection Checkboxes
-    private val enableSameClassCallDetection = JBCheckBox("Detect same-class @Transactional method calls")
-    private val enablePrivateMethodDetection = JBCheckBox("Warn on private methods with @Transactional")
-    private val enableFinalMethodDetection = JBCheckBox("Warn on final methods with @Transactional")
-    private val enableStaticMethodDetection = JBCheckBox("Warn on static methods with @Transactional")
-    private val enableCheckedExceptionRollbackDetection = JBCheckBox("Warn on checked exceptions without rollbackFor")
-    private val enableAsyncTransactionalDetection = JBCheckBox("Detect @Async and @Transactional conflicts")
-    private val enableReadOnlyWriteCallDetection = JBCheckBox("Detect write method calls from readOnly transactions")
-    private val enableReadOnlyTransactionalDetection = JBCheckBox("Detect write operations in @Transactional(readOnly=true) methods")
-    private val enablePropagationConflictDetection = JBCheckBox("Detect transaction propagation conflicts (MANDATORY/NEVER/REQUIRES_NEW)")
-
-    // N+1 Checkboxes
-    private val enableN1Detection = JBCheckBox("Enable N+1 query detection")
-    private val checkInStreamOperations = JBCheckBox("Check in stream operations (.map, .flatMap)")
-    private val checkInLoops = JBCheckBox("Check in for-each loops")
-
-    // Gutter Icon Checkboxes
-    private val showGutterIcons = JBCheckBox("Show gutter icons for @Transactional methods")
-    private val showReadOnlyWithDifferentIcon = JBCheckBox("Show different icon for readOnly transactions")
 
     override fun getDisplayName(): String = "Spring Transaction Inspector"
 
     override fun createComponent(): JComponent {
-        val settings = TransactionInspectorSettings.getInstance(project).state
+        loadFromState()
+        wireParentChildEnablement()
 
-        enableSameClassCallDetection.isSelected = settings.enableSameClassCallDetection
-        enablePrivateMethodDetection.isSelected = settings.enablePrivateMethodDetection
-        enableFinalMethodDetection.isSelected = settings.enableFinalMethodDetection
-        enableStaticMethodDetection.isSelected = settings.enableStaticMethodDetection
-        enableCheckedExceptionRollbackDetection.isSelected = settings.enableCheckedExceptionRollbackDetection
-        enableAsyncTransactionalDetection.isSelected = settings.enableAsyncTransactionalDetection
-        enableReadOnlyWriteCallDetection.isSelected = settings.enableReadOnlyWriteCallDetection
-        enableReadOnlyTransactionalDetection.isSelected = settings.enableReadOnlyTransactionalDetection
-        enablePropagationConflictDetection.isSelected = settings.enablePropagationConflictDetection
-
-        enableN1Detection.isSelected = settings.enableN1Detection
-        checkInStreamOperations.isSelected = settings.checkInStreamOperations
-        checkInLoops.isSelected = settings.checkInLoops
-
-        showGutterIcons.isSelected = settings.showGutterIcons
-        showReadOnlyWithDifferentIcon.isSelected = settings.showReadOnlyWithDifferentIcon
-
-        enableN1Detection.addActionListener {
-            val enabled = enableN1Detection.isSelected
-            checkInStreamOperations.isEnabled = enabled
-            checkInLoops.isEnabled = enabled
-        }
-        checkInStreamOperations.isEnabled = enableN1Detection.isSelected
-        checkInLoops.isEnabled = enableN1Detection.isSelected
-
-        showGutterIcons.addActionListener {
-            showReadOnlyWithDifferentIcon.isEnabled = showGutterIcons.isSelected
-        }
-        showReadOnlyWithDifferentIcon.isEnabled = showGutterIcons.isSelected
-
-        mainPanel = FormBuilder.createFormBuilder()
+        val builder = FormBuilder.createFormBuilder()
             .addComponent(JBLabel("<html><b>Transaction Inspections</b></html>"), 0)
-            .addComponent(enableSameClassCallDetection)
-            .addComponent(enablePrivateMethodDetection)
-            .addComponent(enableFinalMethodDetection)
-            .addComponent(enableStaticMethodDetection)
-            .addComponent(enableCheckedExceptionRollbackDetection)
-            .addComponent(enableAsyncTransactionalDetection)
-            .addComponent(enableReadOnlyWriteCallDetection)
-            .addComponent(enableReadOnlyTransactionalDetection)
-            .addComponent(enablePropagationConflictDetection)
 
-            .addComponent(JSeparator(), 10)
+        inspectionToggles.forEach { builder.addComponent(it.checkbox) }
 
+        builder.addComponent(JSeparator(), 10)
             .addComponent(JBLabel("<html><b>N+1 Query Detection</b></html>"), 10)
-            .addComponent(enableN1Detection)
-            .addComponent(createIndentedPanel(checkInStreamOperations))
-            .addComponent(createIndentedPanel(checkInLoops))
 
-            .addComponent(JSeparator(), 10)
+        n1Toggles.forEach { builder.addComponent(if (it.indented) indented(it.checkbox) else it.checkbox) }
 
+        builder.addComponent(JSeparator(), 10)
             .addComponent(JBLabel("<html><b>Visual Indicators</b></html>"), 10)
-            .addComponent(showGutterIcons)
-            .addComponent(createIndentedPanel(showReadOnlyWithDifferentIcon))
 
-            .addComponentFillVertically(JPanel(), 0)
-            .panel
+        gutterToggles.forEach { builder.addComponent(if (it.indented) indented(it.checkbox) else it.checkbox) }
 
+        mainPanel = builder.addComponentFillVertically(JPanel(), 0).panel
         return mainPanel!!
     }
 
-    private fun createIndentedPanel(component: JComponent): JPanel {
+    private fun wireParentChildEnablement() {
+        val byProperty = allToggles.associateBy { it.property }
+        allToggles.forEach { toggle ->
+            val parentProp = toggle.parent ?: return@forEach
+            val parent = byProperty[parentProp] ?: return@forEach
+            val sync = { toggle.checkbox.isEnabled = parent.checkbox.isSelected }
+            parent.checkbox.addActionListener { sync() }
+            sync()
+        }
+    }
+
+    private fun indented(component: JComponent): JPanel {
         val panel = JPanel(BorderLayout())
         panel.border = JBUI.Borders.emptyLeft(20)
         panel.add(component, BorderLayout.WEST)
         return panel
     }
 
-    override fun isModified(): Boolean {
-        val settings = TransactionInspectorSettings.getInstance(project).state
+    private fun loadFromState() {
+        val state = TransactionInspectorSettings.getInstance(project).state
+        allToggles.forEach { it.checkbox.isSelected = it.property.get(state) }
+    }
 
-        return enableSameClassCallDetection.isSelected != settings.enableSameClassCallDetection ||
-                enablePrivateMethodDetection.isSelected != settings.enablePrivateMethodDetection ||
-                enableFinalMethodDetection.isSelected != settings.enableFinalMethodDetection ||
-                enableStaticMethodDetection.isSelected != settings.enableStaticMethodDetection ||
-                enableCheckedExceptionRollbackDetection.isSelected != settings.enableCheckedExceptionRollbackDetection ||
-                enableAsyncTransactionalDetection.isSelected != settings.enableAsyncTransactionalDetection ||
-                enableReadOnlyWriteCallDetection.isSelected != settings.enableReadOnlyWriteCallDetection ||
-                enableReadOnlyTransactionalDetection.isSelected != settings.enableReadOnlyTransactionalDetection ||
-                enablePropagationConflictDetection.isSelected != settings.enablePropagationConflictDetection ||
-                enableN1Detection.isSelected != settings.enableN1Detection ||
-                checkInStreamOperations.isSelected != settings.checkInStreamOperations ||
-                checkInLoops.isSelected != settings.checkInLoops ||
-                showGutterIcons.isSelected != settings.showGutterIcons ||
-                showReadOnlyWithDifferentIcon.isSelected != settings.showReadOnlyWithDifferentIcon
+    override fun isModified(): Boolean {
+        val state = TransactionInspectorSettings.getInstance(project).state
+        return allToggles.any { it.checkbox.isSelected != it.property.get(state) }
     }
 
     override fun apply() {
-        val settings = TransactionInspectorSettings.getInstance(project)
-        settings.state.enableSameClassCallDetection = enableSameClassCallDetection.isSelected
-        settings.state.enablePrivateMethodDetection = enablePrivateMethodDetection.isSelected
-        settings.state.enableFinalMethodDetection = enableFinalMethodDetection.isSelected
-        settings.state.enableStaticMethodDetection = enableStaticMethodDetection.isSelected
-        settings.state.enableCheckedExceptionRollbackDetection = enableCheckedExceptionRollbackDetection.isSelected
-        settings.state.enableAsyncTransactionalDetection = enableAsyncTransactionalDetection.isSelected
-        settings.state.enableReadOnlyWriteCallDetection = enableReadOnlyWriteCallDetection.isSelected
-        settings.state.enableReadOnlyTransactionalDetection = enableReadOnlyTransactionalDetection.isSelected
-        settings.state.enablePropagationConflictDetection = enablePropagationConflictDetection.isSelected
-
-        settings.state.enableN1Detection = enableN1Detection.isSelected
-        settings.state.checkInStreamOperations = checkInStreamOperations.isSelected
-        settings.state.checkInLoops = checkInLoops.isSelected
-
-        settings.state.showGutterIcons = showGutterIcons.isSelected
-        settings.state.showReadOnlyWithDifferentIcon = showReadOnlyWithDifferentIcon.isSelected
+        val state = TransactionInspectorSettings.getInstance(project).state
+        allToggles.forEach { it.property.set(state, it.checkbox.isSelected) }
     }
 
     override fun reset() {
-        val settings = TransactionInspectorSettings.getInstance(project).state
-
-        enableSameClassCallDetection.isSelected = settings.enableSameClassCallDetection
-        enablePrivateMethodDetection.isSelected = settings.enablePrivateMethodDetection
-        enableFinalMethodDetection.isSelected = settings.enableFinalMethodDetection
-        enableStaticMethodDetection.isSelected = settings.enableStaticMethodDetection
-        enableCheckedExceptionRollbackDetection.isSelected = settings.enableCheckedExceptionRollbackDetection
-        enableAsyncTransactionalDetection.isSelected = settings.enableAsyncTransactionalDetection
-        enableReadOnlyWriteCallDetection.isSelected = settings.enableReadOnlyWriteCallDetection
-        enableReadOnlyTransactionalDetection.isSelected = settings.enableReadOnlyTransactionalDetection
-        enablePropagationConflictDetection.isSelected = settings.enablePropagationConflictDetection
-
-        enableN1Detection.isSelected = settings.enableN1Detection
-        checkInStreamOperations.isSelected = settings.checkInStreamOperations
-        checkInLoops.isSelected = settings.checkInLoops
-
-        showGutterIcons.isSelected = settings.showGutterIcons
-        showReadOnlyWithDifferentIcon.isSelected = settings.showReadOnlyWithDifferentIcon
+        loadFromState()
     }
 }

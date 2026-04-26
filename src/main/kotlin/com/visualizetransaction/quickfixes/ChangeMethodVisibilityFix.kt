@@ -5,6 +5,7 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.PsiMethod
 import com.intellij.psi.PsiModifier
+import com.intellij.psi.util.PsiTreeUtil
 
 class ChangeMethodVisibilityFix(
     private val methodName: String
@@ -19,9 +20,7 @@ class ChangeMethodVisibilityFix(
     }
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        val annotation = descriptor.psiElement
-        val method = annotation.parent?.parent as? PsiMethod ?: return
-
+        val method = PsiTreeUtil.getParentOfType(descriptor.psiElement, PsiMethod::class.java) ?: return
         method.modifierList.setModifierProperty(PsiModifier.PRIVATE, false)
         method.modifierList.setModifierProperty(PsiModifier.PUBLIC, true)
     }

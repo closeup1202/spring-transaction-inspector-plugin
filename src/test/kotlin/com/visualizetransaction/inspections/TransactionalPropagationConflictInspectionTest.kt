@@ -127,6 +127,8 @@ class TransactionalPropagationConflictInspectionTest : BaseInspectionTest() {
 
             @Service
             public class UserService {
+                private EmailService emailService;
+
                 @Transactional  // ❌ Has transaction
                 public void registerUser(User user) {
                     emailService.sendWelcomeEmail(user);  // Should ERROR
@@ -163,6 +165,8 @@ class TransactionalPropagationConflictInspectionTest : BaseInspectionTest() {
 
             @Service
             public class UserService {
+                private EmailService emailService;
+
                 // ✅ No @Transactional
                 public void sendEmail(User user) {
                     emailService.sendWelcomeEmail(user);  // Should be OK
@@ -201,6 +205,8 @@ class TransactionalPropagationConflictInspectionTest : BaseInspectionTest() {
 
             @Service
             public class OrderService {
+                private PaymentService paymentService;
+
                 @Transactional  // Has transaction
                 public void createOrder(Order order) {
                     paymentService.processPayment(order);  // Should WARN
@@ -237,6 +243,8 @@ class TransactionalPropagationConflictInspectionTest : BaseInspectionTest() {
 
             @Service
             public class OrderService {
+                private PaymentService paymentService;
+
                 // ✅ No @Transactional
                 public void processOrder(Order order) {
                     paymentService.processPayment(order);  // Should be OK
@@ -275,6 +283,8 @@ class TransactionalPropagationConflictInspectionTest : BaseInspectionTest() {
 
             @Service
             public class ServiceA {
+                private ServiceB serviceB;
+
                 public void method1() {
                     serviceB.method2();  // Cross-class call - should detect
                 }

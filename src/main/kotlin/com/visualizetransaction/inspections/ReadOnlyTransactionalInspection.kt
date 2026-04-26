@@ -3,7 +3,15 @@ package com.visualizetransaction.inspections
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.*
+import com.intellij.psi.JavaElementVisitor
+import com.intellij.psi.PsiCodeBlock
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.PsiExpression
+import com.intellij.psi.PsiField
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiMethodCallExpression
+import com.intellij.psi.PsiReferenceExpression
 import com.intellij.psi.util.PsiTreeUtil
 import com.visualizetransaction.settings.TransactionInspectorSettings
 import com.visualizetransaction.utils.PsiUtils
@@ -11,26 +19,17 @@ import com.visualizetransaction.utils.PsiUtils
 class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
+        val settings = TransactionInspectorSettings.getInstance(holder.project).state
+        if (!settings.enableReadOnlyTransactionalDetection) {
+            return PsiElementVisitor.EMPTY_VISITOR
+        }
+
         return object : JavaElementVisitor() {
 
             override fun visitMethod(method: PsiMethod) {
                 super.visitMethod(method)
 
-                // Check if this inspection is enabled in settings
-                val settings = TransactionInspectorSettings.getInstance(holder.project).state
-                if (!settings.enableReadOnlyTransactionalDetection) {
-                    return
-                }
-
-                val transactionalAnnotation = method.annotations.find {
-                    it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
-                } ?: return
-
-                val isReadOnly = transactionalAnnotation.findAttributeValue("readOnly")?.let {
-                    it.text.lowercase() == "true"
-                } ?: false
-
-                if (!isReadOnly) return
+                if (!PsiUtils.isReadOnlyTransactional(method)) return
 
                 method.body?.let { body ->
                     checkForWriteOperations(body, holder)
@@ -46,7 +45,7 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
             val methodName = call.methodExpression.referenceName ?: continue
             val resolvedMethod = call.resolveMethod()
 
-            if (isWriteOperation(methodName, resolvedMethod)) {
+            if (PsiUtils.isWriteOperationMethod(methodName, resolvedMethod)) {
                 holder.registerProblem(
                     call as PsiElement,
                     "⚠️ @Transactional(readOnly=true) method should not perform write operations. " +
@@ -56,7 +55,7 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
                 )
             }
 
-            if (isCollectionModificationOperation(methodName)) {
+            if (PsiUtils.isCollectionModificationMethod(methodName)) {
                 val caller = call.methodExpression.qualifier as? PsiExpression
                 if (caller != null && representsLazyCollection(caller)) {
                     holder.registerProblem(
@@ -71,38 +70,22 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
         }
     }
 
-    private fun isWriteOperation(methodName: String, method: PsiMethod?): Boolean {
-        // Use type-based verification for better accuracy
-        return PsiUtils.isWriteOperationMethod(methodName, method)
-    }
-
-    private fun isCollectionModificationOperation(methodName: String): Boolean {
-        return PsiUtils.isCollectionModificationMethod(methodName)
-    }
-
     private fun representsLazyCollection(expression: PsiExpression): Boolean {
-        if (expression is PsiReferenceExpression) {
-            val resolved = expression.resolve()
-
-            if (resolved is PsiField) {
-                return hasLazyAnnotation(resolved)
+        return when (expression) {
+            is PsiReferenceExpression -> when (val resolved = expression.resolve()) {
+                is PsiField -> PsiUtils.hasLazyJpaRelationshipAnnotation(resolved)
+                is PsiMethod -> PsiUtils.findFieldFromGetter(resolved)
+                    ?.let { PsiUtils.hasLazyJpaRelationshipAnnotation(it) } ?: false
+                else -> false
             }
-
-            if (resolved is PsiMethod) {
-                val field = PsiUtils.findFieldFromGetter(resolved)
-                if (field != null) {
-                    return hasLazyAnnotation(field)
-                }
+            is PsiMethodCallExpression -> {
+                val method = expression.resolveMethod() ?: return false
+                val field = PsiUtils.findFieldFromGetter(method) ?: return false
+                PsiUtils.hasLazyJpaRelationshipAnnotation(field)
             }
+            else -> false
         }
-
-        return false
     }
-
-    private fun hasLazyAnnotation(field: PsiField): Boolean {
-        return PsiUtils.hasLazyJpaRelationshipAnnotation(field)
-    }
-
 
     override fun getStaticDescription(): String {
         return """
@@ -111,19 +94,6 @@ class ReadOnlyTransactionalInspection : AbstractBaseJavaLocalInspectionTool() {
             When a method is marked as read-only, it should not perform any write operations
             like save, update, delete, or collection modifications. This inspection helps catch
             logical errors and potential performance issues.
-            </p>
-            <p>
-            <b>Example:</b>
-            </p>
-            <pre>
-            @Transactional(readOnly = true)
-            public void getAndModify(Long id) {
-                User user = repository.findById(id);
-                repository.save(user);  // ❌ WARNING
-            }
-            </pre>
-            <p>
-            <b>Fix:</b> Remove 'readOnly=true' if write operations are intended.
             </p>
         """.trimIndent()
     }

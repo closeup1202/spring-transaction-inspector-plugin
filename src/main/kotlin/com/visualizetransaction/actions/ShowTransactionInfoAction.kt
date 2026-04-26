@@ -5,14 +5,16 @@ import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.ui.Messages
-import com.intellij.psi.*
+import com.intellij.psi.PsiAnnotation
+import com.intellij.psi.PsiJavaFile
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiModifierListOwner
 import com.intellij.psi.util.PsiTreeUtil
+import com.visualizetransaction.utils.PsiUtils
 
-class ShowTransactionInfoAction : AnAction(){
+class ShowTransactionInfoAction : AnAction() {
 
-    override fun getActionUpdateThread(): ActionUpdateThread {
-        return ActionUpdateThread.BGT
-    }
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.BGT
 
     override fun actionPerformed(e: AnActionEvent) {
         val editor = e.getData(CommonDataKeys.EDITOR) ?: return
@@ -21,7 +23,6 @@ class ShowTransactionInfoAction : AnAction(){
 
         val offset = editor.caretModel.offset
         val element = psiFile.findElementAt(offset)
-
         val method = PsiTreeUtil.getParentOfType(element, PsiMethod::class.java)
 
         if (method == null) {
@@ -34,77 +35,66 @@ class ShowTransactionInfoAction : AnAction(){
             return
         }
 
-        val transactional = findTransactionalAnnotation(method)
-
-        if (transactional != null) {
-            val info = analyzeTransactional(transactional)
+        val methodLevel = findTransactionalAnnotation(method)
+        if (methodLevel != null) {
             Messages.showMessageDialog(
                 project,
                 """
                     Method: ${method.name}
                     Transaction: attached to the method
-                    
-                    $info
+
+                    ${analyzeTransactional(methodLevel)}
                 """.trimIndent(),
                 "Transaction Info",
                 Messages.getInformationIcon()
             )
-        } else {
-            val containingClass = method.containingClass
-            val classTransactional = containingClass?.let { findTransactionalAnnotation(it) }
-
-            if (classTransactional != null) {
-                Messages.showMessageDialog(
-                    project,
-                    """
-                        Method: ${method.name}
-                        Transaction: Inherited at the class level
-                        
-                        ${analyzeTransactional(classTransactional)}
-                    """.trimIndent(),
-                    "Transaction Info",
-                    Messages.getInformationIcon()
-                )
-            } else {
-                Messages.showMessageDialog(
-                    project,
-                    "Method '${method.name}' does not have @Transactional annotation.",
-                    "Transaction Info",
-                    Messages.getInformationIcon()
-                )
-            }
+            return
         }
+
+        val classLevel = method.containingClass?.let { findTransactionalAnnotation(it) }
+        if (classLevel != null) {
+            Messages.showMessageDialog(
+                project,
+                """
+                    Method: ${method.name}
+                    Transaction: Inherited at the class level
+
+                    ${analyzeTransactional(classLevel)}
+                """.trimIndent(),
+                "Transaction Info",
+                Messages.getInformationIcon()
+            )
+            return
+        }
+
+        Messages.showMessageDialog(
+            project,
+            "Method '${method.name}' does not have @Transactional annotation.",
+            "Transaction Info",
+            Messages.getInformationIcon()
+        )
     }
 
     private fun findTransactionalAnnotation(element: PsiModifierListOwner): PsiAnnotation? {
-        return element.annotations.firstOrNull { annotation ->
-            annotation.qualifiedName in listOf(
-                "org.springframework.transaction.annotation.Transactional",
-                "jakarta.transaction.Transactional",
-                "javax.transaction.Transactional"
-            )
-        }
+        return element.annotations.firstOrNull { PsiUtils.isTransactionalAnnotation(it) }
     }
 
     private fun analyzeTransactional(annotation: PsiAnnotation): String {
         val attributes = mutableListOf<String>()
 
-        val propagation = annotation.findAttributeValue("propagation")
+        val propagationAttr = when (annotation.qualifiedName) {
+            PsiUtils.SPRING_TRANSACTIONAL -> "propagation"
+            else -> "value"
+        }
+        val propagation = annotation.findAttributeValue(propagationAttr)
         if (propagation != null) {
             attributes.add("Propagation: ${propagation.text}")
         } else {
             attributes.add("Propagation: REQUIRED (default)")
         }
 
-        val readOnly = annotation.findAttributeValue("readOnly")
-        if (readOnly != null) {
-            attributes.add("ReadOnly: ${readOnly.text}")
-        }
-
-        val timeout = annotation.findAttributeValue("timeout")
-        if (timeout != null) {
-            attributes.add("Timeout: ${timeout.text}")
-        }
+        annotation.findAttributeValue("readOnly")?.let { attributes.add("ReadOnly: ${it.text}") }
+        annotation.findAttributeValue("timeout")?.let { attributes.add("Timeout: ${it.text}") }
 
         return attributes.joinToString("\n")
     }

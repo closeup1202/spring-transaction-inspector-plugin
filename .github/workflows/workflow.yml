@@ -9,11 +9,13 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # Release 생성 권한 추가
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -23,6 +25,9 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      - name: Run Tests
+        run: ./gradlew test
 
       - name: Build Plugin
         run: ./gradlew buildPlugin
@@ -36,16 +41,14 @@ jobs:
         run: echo "VERSION=${GITHUB_REF##*/}" | sed 's/^v//' >> $GITHUB_ENV
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: Release ${{ github.ref_name }}
+          generate_release_notes: true
           body: |
-            ### Version 1.0.6 - Build Toolchain Update
-            #### Changes
-            - Upgraded to Gradle 9.4 and IntelliJ Platform Gradle Plugin 2.12.0 to fix plugin archive extraction issue on IntelliJ IDEA 2026.1 (build 261.*)
-
-            ---
             🔗 [View on JetBrains Marketplace](https://plugins.jetbrains.com/plugin/28789-spring-transaction-inspector)
+
+            See [CHANGELOG.md](https://github.com/closeup1202/spring-transaction-inspector-plugin/blob/${{ github.ref_name }}/CHANGELOG.md) for full details.
           draft: false
           prerelease: false
           files: build/distributions/spring-transaction-inspector-${{ env.VERSION }}.zip

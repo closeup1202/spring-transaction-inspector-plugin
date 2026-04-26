@@ -211,7 +211,7 @@ class AsyncTransactionalConflictInspectionTest : BaseInspectionTest() {
             import org.springframework.transaction.annotation.Transactional;
 
             class UserService {
-                @Async
+                @<caret>Async
                 @Transactional
                 public void processAsync() {
                     // code
@@ -226,7 +226,7 @@ class AsyncTransactionalConflictInspectionTest : BaseInspectionTest() {
         val removeFix = intentions.find { it.familyName == "Remove @Async annotation" }
         assertNotNull("Should have quick fix to remove @Async", removeFix)
 
-        removeFix?.invoke(project, myFixture.editor, myFixture.file)
+        removeFix?.let { myFixture.launchAction(it) }
 
         myFixture.checkResult("""
             import org.springframework.scheduling.annotation.Async;
@@ -247,7 +247,7 @@ class AsyncTransactionalConflictInspectionTest : BaseInspectionTest() {
             import org.springframework.transaction.annotation.Transactional;
 
             class UserService {
-                @Async
+                @<caret>Async
                 @Transactional
                 public void processAsync() {
                     // code
@@ -262,7 +262,7 @@ class AsyncTransactionalConflictInspectionTest : BaseInspectionTest() {
         val removeFix = intentions.find { it.familyName == "Remove @Transactional annotation" }
         assertNotNull("Should have quick fix to remove @Transactional", removeFix)
 
-        removeFix?.invoke(project, myFixture.editor, myFixture.file)
+        removeFix?.let { myFixture.launchAction(it) }
 
         myFixture.checkResult("""
             import org.springframework.scheduling.annotation.Async;

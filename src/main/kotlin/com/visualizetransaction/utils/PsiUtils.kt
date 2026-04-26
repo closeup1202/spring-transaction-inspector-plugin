@@ -1,13 +1,27 @@
 package com.visualizetransaction.utils
 
+import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiAnnotation
+import com.intellij.psi.PsiAnnotationMemberValue
 import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiField
+import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiMethod
-import com.intellij.psi.JavaPsiFacade
-import java.util.concurrent.ConcurrentHashMap
+import com.intellij.psi.util.CachedValueProvider
+import com.intellij.psi.util.CachedValuesManager
+import com.intellij.psi.util.PsiModificationTracker
 
 object PsiUtils {
+
+    const val SPRING_TRANSACTIONAL = "org.springframework.transaction.annotation.Transactional"
+    const val JAKARTA_TRANSACTIONAL = "jakarta.transaction.Transactional"
+    const val JAVAX_TRANSACTIONAL = "javax.transaction.Transactional"
+
+    private val ALL_TRANSACTIONAL_FQNS = setOf(
+        SPRING_TRANSACTIONAL,
+        JAKARTA_TRANSACTIONAL,
+        JAVAX_TRANSACTIONAL
+    )
 
     fun findFieldFromGetter(method: PsiMethod): PsiField? {
         val methodName = method.name
@@ -27,19 +41,11 @@ object PsiUtils {
         return method.containingClass?.findFieldByName(fieldName, false)
     }
 
-    // Cache for repository class checks (performance optimization)
-    private val repositoryClassCache = ConcurrentHashMap<PsiClass, Boolean>()
-
     /**
      * Check if a method is a write operation using type-based verification.
      * This method combines name-based filtering with type checking to minimize false positives.
-     *
-     * @param methodName The name of the method to check
-     * @param method Optional PsiMethod for type verification (if available)
-     * @return true if this is a write operation, false otherwise
      */
     fun isWriteOperationMethod(methodName: String, method: PsiMethod? = null): Boolean {
-        // Step 1: Name-based filtering (performance optimization)
         val writePatterns = listOf(
             "save", "saveAll", "saveAndFlush",
             "update", "updateAll",
@@ -49,44 +55,26 @@ object PsiUtils {
         )
 
         if (!writePatterns.any { pattern -> methodName.lowercase().contains(pattern) }) {
-            return false  // Fast path: name doesn't match any writing pattern
+            return false
         }
 
-        // Step 2: Type-based verification (if the method is available)
         if (method != null) {
             return isActualWriteOperation(method)
         }
 
-        // Step 3: Fallback - conservative approach when type info unavailable
-        // If name matches, but we can't verify the type, assume it's a write operation
-        // User can suppress the warning if it's a false positive
         return true
     }
 
-    /**
-     * Verify if a method is actually a write operation based on its containing class type.
-     */
     private fun isActualWriteOperation(method: PsiMethod): Boolean {
         val containingClass = method.containingClass ?: return true
 
-        // 1. Spring Data Repository (the most common case)
-        if (isSpringDataRepository(containingClass)) {
-            return true
-        }
+        if (isSpringDataRepository(containingClass)) return true
+        if (isJpaEntityManager(containingClass)) return true
+        if (hasRepositoryAnnotation(containingClass)) return true
 
-        // 2. JPA EntityManager/Session
-        if (isJpaEntityManager(containingClass)) {
-            return true
-        }
-
-        // 3. @Repository annotation
-        if (hasRepositoryAnnotation(containingClass)) {
-            return true
-        }
-
-        // 4. Naming convention (fallback)
         if (containingClass.name?.endsWith("Repository") == true ||
-            containingClass.name?.endsWith("Dao") == true) {
+            containingClass.name?.endsWith("Dao") == true
+        ) {
             return true
         }
 
@@ -94,34 +82,30 @@ object PsiUtils {
     }
 
     /**
-     * Check if a class is a Spring Data Repository by verifying interface inheritance.
-     * Uses caching for performance.
+     * Spring Data Repository detection backed by [CachedValuesManager] so the result is
+     * automatically invalidated when PSI changes. Replaces the previous unbounded
+     * ConcurrentHashMap which leaked stale PsiClass references across edits.
      */
     private fun isSpringDataRepository(psiClass: PsiClass): Boolean {
-        return repositoryClassCache.getOrPut(psiClass) {
-            checkSpringDataRepositoryInheritance(psiClass)
+        return CachedValuesManager.getCachedValue(psiClass) {
+            CachedValueProvider.Result.create(
+                checkSpringDataRepositoryInheritance(psiClass),
+                PsiModificationTracker.MODIFICATION_COUNT
+            )
         }
     }
 
-    /**
-     * Check if a class inherits from Spring Data Repository interfaces.
-     */
     private fun checkSpringDataRepositoryInheritance(psiClass: PsiClass): Boolean {
         val repositoryInterfaces = listOf(
-            // Spring Data Common
             "org.springframework.data.repository.Repository",
             "org.springframework.data.repository.CrudRepository",
             "org.springframework.data.repository.PagingAndSortingRepository",
             "org.springframework.data.repository.ListCrudRepository",
-            // Spring Data JPA
             "org.springframework.data.jpa.repository.JpaRepository",
-            // Spring Data Reactive
             "org.springframework.data.repository.reactive.ReactiveCrudRepository",
             "org.springframework.data.repository.reactive.ReactiveSortingRepository",
-            // Spring Data MongoDB
             "org.springframework.data.mongodb.repository.MongoRepository",
             "org.springframework.data.mongodb.repository.ReactiveMongoRepository",
-            // Spring Data R2DBC
             "org.springframework.data.r2dbc.repository.R2dbcRepository"
         )
 
@@ -139,26 +123,17 @@ object PsiUtils {
         return false
     }
 
-    /**
-     * Check if a class is a JPA EntityManager or Hibernate Session.
-     */
     private fun isJpaEntityManager(psiClass: PsiClass): Boolean {
         val qualifiedName = psiClass.qualifiedName ?: return false
 
         return qualifiedName in listOf(
-            // JPA 2.x
             "javax.persistence.EntityManager",
-            // JPA 3.0+ (Jakarta)
             "jakarta.persistence.EntityManager",
-            // Hibernate
             "org.hibernate.Session",
             "org.hibernate.StatelessSession"
         )
     }
 
-    /**
-     * Check if a class has @Repository annotation.
-     */
     private fun hasRepositoryAnnotation(psiClass: PsiClass): Boolean {
         return psiClass.annotations.any { annotation ->
             annotation.qualifiedName in listOf(
@@ -168,9 +143,6 @@ object PsiUtils {
         }
     }
 
-    /**
-     * Check if a method name is a collection modification operation.
-     */
     fun isCollectionModificationMethod(methodName: String): Boolean {
         return methodName in listOf(
             "add", "addAll", "remove", "removeAll", "clear",
@@ -178,38 +150,25 @@ object PsiUtils {
         )
     }
 
-    /**
-     * Check if a field has lazy-loaded JPA relationship annotations.
-     * Checks both javax.persistence (JPA 2.x) and jakarta.persistence (JPA 3.0+).
-     */
     fun hasLazyJpaRelationshipAnnotation(field: PsiField): Boolean {
         return field.annotations.any { annotation ->
             isLazyJpaRelationshipAnnotation(annotation)
         }
     }
 
-    /**
-     * Check if an annotation is a lazy-loaded JPA relationship annotation.
-     */
     fun isLazyJpaRelationshipAnnotation(annotation: PsiAnnotation): Boolean {
         val qualifiedName = annotation.qualifiedName ?: return false
 
         return qualifiedName in listOf(
-            // OneToMany is LAZY by default
             "javax.persistence.OneToMany",
             "jakarta.persistence.OneToMany",
-            // ManyToMany is LAZY by default
             "javax.persistence.ManyToMany",
             "jakarta.persistence.ManyToMany",
-            // ElementCollection is LAZY by default
             "javax.persistence.ElementCollection",
             "jakarta.persistence.ElementCollection"
         )
     }
 
-    /**
-     * Check if an annotation is a JPA relationship annotation (any type).
-     */
     fun isJpaRelationshipAnnotation(annotation: PsiAnnotation): Boolean {
         val qualifiedName = annotation.qualifiedName ?: return false
 
@@ -228,22 +187,107 @@ object PsiUtils {
     }
 
     /**
-     * Check if an annotation is a @Transactional annotation.
-     * Supports Spring, Jakarta EE 9+, and Java EE/Jakarta EE 8-.
+     * Check if a JPA relationship annotation resolves to LAZY semantics
+     * (taking each annotation's default fetch type into account).
      */
-    fun isTransactionalAnnotation(annotation: PsiAnnotation): Boolean {
-        return annotation.qualifiedName in listOf(
-            "org.springframework.transaction.annotation.Transactional",
-            "jakarta.transaction.Transactional",
-            "javax.transaction.Transactional"
+    fun isEffectivelyLazy(annotation: PsiAnnotation): Boolean {
+        val qualifiedName = annotation.qualifiedName ?: return false
+        val fetchValue = annotation.findAttributeValue("fetch")?.text
+
+        val lazyByDefault = qualifiedName in listOf(
+            "javax.persistence.OneToMany",
+            "jakarta.persistence.OneToMany",
+            "javax.persistence.ManyToMany",
+            "jakarta.persistence.ManyToMany",
+            "javax.persistence.ElementCollection",
+            "jakarta.persistence.ElementCollection"
         )
+
+        val eagerByDefault = qualifiedName in listOf(
+            "javax.persistence.ManyToOne",
+            "jakarta.persistence.ManyToOne",
+            "javax.persistence.OneToOne",
+            "jakarta.persistence.OneToOne"
+        )
+
+        return when {
+            lazyByDefault -> fetchValue?.contains("EAGER") != true
+            eagerByDefault -> fetchValue?.contains("LAZY") == true
+            else -> false
+        }
     }
 
-    /**
-     * Check if a method or class has @Transactional annotation.
-     */
+    fun isTransactionalAnnotation(annotation: PsiAnnotation): Boolean {
+        return annotation.qualifiedName in ALL_TRANSACTIONAL_FQNS
+    }
+
     fun hasTransactionalAnnotation(method: PsiMethod): Boolean {
         return method.annotations.any { isTransactionalAnnotation(it) } ||
                 method.containingClass?.annotations?.any { isTransactionalAnnotation(it) } == true
+    }
+
+    /**
+     * Find the first @Transactional annotation on a method, or fall back to a class-level one.
+     */
+    fun findTransactionalAnnotation(method: PsiMethod): PsiAnnotation? {
+        return method.annotations.firstOrNull { isTransactionalAnnotation(it) }
+            ?: method.containingClass?.annotations?.firstOrNull { isTransactionalAnnotation(it) }
+    }
+
+    /**
+     * Resolve the propagation type of a @Transactional method, normalized to
+     * the Spring enum names (REQUIRED, REQUIRES_NEW, MANDATORY, NEVER, NOT_SUPPORTED, SUPPORTS, NESTED).
+     *
+     * Works across Spring (`propagation` attribute), Jakarta and javax (`value` attribute holding TxType).
+     * Returns null if there is no @Transactional at all.
+     */
+    fun getPropagation(method: PsiMethod): String {
+        val annotation = findTransactionalAnnotation(method) ?: return "REQUIRED"
+        val attribute = when (annotation.qualifiedName) {
+            SPRING_TRANSACTIONAL -> annotation.findAttributeValue("propagation")
+            JAKARTA_TRANSACTIONAL, JAVAX_TRANSACTIONAL -> annotation.findAttributeValue("value")
+            else -> null
+        } ?: return "REQUIRED"
+
+        return attribute.text.substringAfterLast(".").trim()
+    }
+
+    /**
+     * Evaluate a boolean attribute value (e.g. readOnly = true). Uses the constant evaluator so
+     * `Boolean.TRUE`, parenthesized expressions or imported constants resolve correctly.
+     */
+    fun evaluateBoolean(value: PsiAnnotationMemberValue?): Boolean? {
+        if (value == null) return null
+        val project = value.project
+        val helper = JavaPsiFacade.getInstance(project).constantEvaluationHelper
+        val result = helper.computeConstantExpression(value)
+        if (result is Boolean) return result
+        return when (value.text.trim()) {
+            "true", "Boolean.TRUE" -> true
+            "false", "Boolean.FALSE" -> false
+            else -> null
+        }
+    }
+
+    fun isReadOnly(annotation: PsiAnnotation): Boolean {
+        if (annotation.qualifiedName != SPRING_TRANSACTIONAL) return false
+        return evaluateBoolean(annotation.findAttributeValue("readOnly")) == true
+    }
+
+    fun isReadOnlyTransactional(method: PsiMethod): Boolean {
+        val annotation = method.annotations.firstOrNull {
+            it.qualifiedName == SPRING_TRANSACTIONAL
+        } ?: return false
+        return isReadOnly(annotation)
+    }
+
+    /**
+     * Check that two methods share an "AOP-equivalent" containing class.
+     * Uses [PsiManager.areElementsEquivalent] so re-resolved PsiClass instances still compare equal.
+     */
+    fun isSameContainingClass(a: PsiMethod, b: PsiMethod): Boolean {
+        val ca = a.containingClass ?: return false
+        val cb = b.containingClass ?: return false
+        return PsiManager.getInstance(ca.project).areElementsEquivalent(ca, cb)
     }
 }

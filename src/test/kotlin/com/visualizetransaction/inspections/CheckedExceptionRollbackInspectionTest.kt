@@ -21,7 +21,7 @@ class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
             import java.io.IOException;
 
             class TestService {
-                @Transactional
+                @<caret>Transactional
                 public void processFile() throws IOException {
                     // some code
                 }
@@ -157,7 +157,7 @@ class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
             import java.io.IOException;
 
             class TestService {
-                @Transactional
+                @<caret>Transactional
                 public void processFile() throws IOException {
                     // some code
                 }
@@ -171,7 +171,7 @@ class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
         val specificFix = intentions.find { it.familyName == "Add rollbackFor = IOException.class" }
         assertNotNull("Should have quick fix for specific exception. Available: ${intentions.map { it.familyName }}", specificFix)
 
-        specificFix?.invoke(project, myFixture.editor, myFixture.file)
+        specificFix?.let { myFixture.launchAction(it) }
 
         myFixture.checkResult(
             """
@@ -194,7 +194,7 @@ class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
             import java.io.IOException;
 
             class TestService {
-                @Transactional
+                @<caret>Transactional
                 public void processFile() throws IOException {
                     // some code
                 }
@@ -208,7 +208,7 @@ class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
         val genericFix = intentions.find { it.familyName == "Add rollbackFor = Exception.class" }
         assertNotNull("Should have quick fix for Exception.class. Available: ${intentions.map { it.familyName }}", genericFix)
 
-        genericFix?.invoke(project, myFixture.editor, myFixture.file)
+        genericFix?.let { myFixture.launchAction(it) }
 
         myFixture.checkResult(
             """
@@ -232,7 +232,7 @@ class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
             import java.sql.SQLException;
 
             class TestService {
-                @Transactional
+                @<caret>Transactional
                 public void processFile() throws IOException, SQLException {
                     // some code
                 }
@@ -248,7 +248,7 @@ class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
         }
         assertNotNull("Should have quick fix for multiple specific exceptions. Available: ${intentions.map { it.familyName }}", specificFix)
 
-        specificFix?.invoke(project, myFixture.editor, myFixture.file)
+        specificFix?.let { myFixture.launchAction(it) }
 
         myFixture.checkResult(
             """
@@ -272,7 +272,7 @@ class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
             import java.io.IOException;
 
             class TestService {
-                @Transactional(readOnly = false)
+                @<caret>Transactional(readOnly = false)
                 public void processFile() throws IOException {
                     // some code
                 }
@@ -286,7 +286,7 @@ class CheckedExceptionRollbackInspectionTest : BaseInspectionTest() {
         val specificFix = intentions.find { it.familyName == "Add rollbackFor = IOException.class" }
         assertNotNull("Should have quick fix for specific exception. Available: ${intentions.map { it.familyName }}", specificFix)
 
-        specificFix?.invoke(project, myFixture.editor, myFixture.file)
+        specificFix?.let { myFixture.launchAction(it) }
 
         myFixture.checkResult(
             """

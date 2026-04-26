@@ -21,11 +21,16 @@ class ReadOnlyTransactionWriteCallInspectionTest : BaseInspectionTest() {
 
             @Service
             class UserService {
+                private StatsService statsService;
+
                 @Transactional(readOnly = true)
                 public void viewUserData() {
-                    updateStats();  // Problem!
+                    statsService.updateStats();  // Problem!
                 }
+            }
 
+            @Service
+            class StatsService {
                 @Transactional  // REQUIRED is default
                 public void updateStats() {
                     // write operations
@@ -214,11 +219,15 @@ class ReadOnlyTransactionWriteCallInspectionTest : BaseInspectionTest() {
             import org.springframework.transaction.annotation.Transactional;
 
             class UserService {
+                private StatsService statsService;
+
                 @Transactional(readOnly = true)
                 public void viewData() {
-                    updateStats();
+                    statsService.update<caret>Stats();
                 }
+            }
 
+            class StatsService {
                 @Transactional
                 public void updateStats() {
                     // write operations
@@ -233,17 +242,21 @@ class ReadOnlyTransactionWriteCallInspectionTest : BaseInspectionTest() {
         val fix = intentions.find { it.familyName == "Change propagation to REQUIRES_NEW" }
         assertNotNull("Should have quick fix to change propagation", fix)
 
-        fix?.invoke(project, myFixture.editor, myFixture.file)
+        fix?.let { myFixture.launchAction(it) }
 
         myFixture.checkResult("""
             import org.springframework.transaction.annotation.Transactional;
 
             class UserService {
+                private StatsService statsService;
+
                 @Transactional(readOnly = true)
                 public void viewData() {
-                    updateStats();
+                    statsService.updateStats();
                 }
+            }
 
+            class StatsService {
                 @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
                 public void updateStats() {
                     // write operations
@@ -257,11 +270,15 @@ class ReadOnlyTransactionWriteCallInspectionTest : BaseInspectionTest() {
             import org.springframework.transaction.annotation.Transactional;
 
             class UserService {
+                private StatsService statsService;
+
                 @Transactional(readOnly = true)
                 public void viewData() {
-                    updateStats();
+                    statsService.update<caret>Stats();
                 }
+            }
 
+            class StatsService {
                 @Transactional(timeout = 30)
                 public void updateStats() {
                     // write operations
@@ -276,17 +293,21 @@ class ReadOnlyTransactionWriteCallInspectionTest : BaseInspectionTest() {
         val fix = intentions.find { it.familyName == "Change propagation to REQUIRES_NEW" }
         assertNotNull("Should have quick fix", fix)
 
-        fix?.invoke(project, myFixture.editor, myFixture.file)
+        fix?.let { myFixture.launchAction(it) }
 
         myFixture.checkResult("""
             import org.springframework.transaction.annotation.Transactional;
 
             class UserService {
+                private StatsService statsService;
+
                 @Transactional(readOnly = true)
                 public void viewData() {
-                    updateStats();
+                    statsService.updateStats();
                 }
+            }
 
+            class StatsService {
                 @Transactional(timeout = 30, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
                 public void updateStats() {
                     // write operations

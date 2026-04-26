@@ -3,68 +3,79 @@ package com.visualizetransaction.inspections
 import com.intellij.codeInspection.AbstractBaseJavaLocalInspectionTool
 import com.intellij.codeInspection.ProblemHighlightType
 import com.intellij.codeInspection.ProblemsHolder
-import com.intellij.psi.*
+import com.intellij.psi.JavaElementVisitor
+import com.intellij.psi.PsiAnnotation
+import com.intellij.psi.PsiArrayInitializerMemberValue
+import com.intellij.psi.PsiClass
+import com.intellij.psi.PsiClassType
+import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiElementVisitor
+import com.intellij.psi.PsiMethod
+import com.intellij.psi.PsiType
 import com.visualizetransaction.quickfixes.AddRollbackForFix
 import com.visualizetransaction.settings.TransactionInspectorSettings
+import com.visualizetransaction.utils.PsiUtils
 
 class CheckedExceptionRollbackInspection : AbstractBaseJavaLocalInspectionTool() {
 
     override fun buildVisitor(holder: ProblemsHolder, isOnTheFly: Boolean): PsiElementVisitor {
+        val settings = TransactionInspectorSettings.getInstance(holder.project).state
+        if (!settings.enableCheckedExceptionRollbackDetection) {
+            return PsiElementVisitor.EMPTY_VISITOR
+        }
+
         return object : JavaElementVisitor() {
             override fun visitMethod(method: PsiMethod) {
                 super.visitMethod(method)
 
                 val transactional = method.annotations.firstOrNull {
-                    it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
+                    PsiUtils.isTransactionalAnnotation(it)
                 } ?: return
 
-                val settings = TransactionInspectorSettings.getInstance(holder.project).state
-
-                if (!settings.enableCheckedExceptionRollbackDetection) {
-                    return
-                }
-
-                val hasRollbackFor = hasExplicitAttribute(transactional, "rollbackFor") ||
-                        hasExplicitAttribute(transactional, "rollbackForClassName")
-
-                if (hasRollbackFor) {
-                    return
-                }
+                if (hasRollbackConfiguration(transactional)) return
 
                 val throwsTypes = method.throwsList.referencedTypes
-                if (throwsTypes.isEmpty()) {
-                    return
-                }
+                if (throwsTypes.isEmpty()) return
 
                 val checkedExceptions = throwsTypes.filter { isCheckedException(it) }
+                if (checkedExceptions.isEmpty()) return
 
-                if (checkedExceptions.isNotEmpty()) {
-                    val exceptionNames = checkedExceptions.joinToString(", ") { it.presentableText }
+                val exceptionNames = checkedExceptions.joinToString(", ") { it.presentableText }
 
-                    val exceptionClassNames = checkedExceptions.mapNotNull { exceptionType ->
-                        exceptionType?.resolve()?.qualifiedName
-                    }
+                val quickFixes = mutableListOf<AddRollbackForFix>()
+                val isSpringAnnotation = transactional.qualifiedName == PsiUtils.SPRING_TRANSACTIONAL
 
-                    val quickFixes = mutableListOf<AddRollbackForFix>()
-
-                    if (exceptionClassNames.isNotEmpty()) {
-                        val specificExceptionNames = exceptionClassNames.map { it.substringAfterLast('.') }
+                if (isSpringAnnotation) {
+                    val specificExceptionNames = checkedExceptions
+                        .mapNotNull { it.resolve()?.qualifiedName?.substringAfterLast('.') }
+                    if (specificExceptionNames.isNotEmpty()) {
                         quickFixes.add(AddRollbackForFix.create(transactional, specificExceptionNames))
                     }
-
                     quickFixes.add(AddRollbackForFix.create(transactional, listOf("Exception")))
-
-                    holder.registerProblem(
-                        transactional as PsiElement,
-                        "⚠️ Method throws checked exception(s) [$exceptionNames] but @Transactional " +
-                                "doesn't specify 'rollbackFor'. By default, checked exceptions won't trigger " +
-                                "rollback, which may cause data inconsistency.",
-                        ProblemHighlightType.WARNING,
-                        *quickFixes.toTypedArray()
-                    )
                 }
+
+                val configAttribute = if (isSpringAnnotation) "rollbackFor" else "rollbackOn"
+
+                holder.registerProblem(
+                    transactional as PsiElement,
+                    "⚠️ Method throws checked exception(s) [$exceptionNames] but @Transactional " +
+                            "doesn't specify '$configAttribute'. By default, checked exceptions won't trigger " +
+                            "rollback, which may cause data inconsistency.",
+                    ProblemHighlightType.WARNING,
+                    *quickFixes.toTypedArray()
+                )
             }
         }
+    }
+
+    private fun hasRollbackConfiguration(annotation: PsiAnnotation): Boolean {
+        val attributesToCheck = when (annotation.qualifiedName) {
+            PsiUtils.SPRING_TRANSACTIONAL -> listOf("rollbackFor", "rollbackForClassName")
+            PsiUtils.JAKARTA_TRANSACTIONAL, PsiUtils.JAVAX_TRANSACTIONAL -> listOf("rollbackOn")
+            else -> return true
+        }
+
+        return attributesToCheck.any { hasExplicitAttribute(annotation, it) }
     }
 
     private fun hasExplicitAttribute(annotation: PsiAnnotation, attributeName: String): Boolean {
@@ -112,28 +123,9 @@ class CheckedExceptionRollbackInspection : AbstractBaseJavaLocalInspectionTool()
             <p>
             By default, Spring only rolls back transactions for RuntimeException and Error.
             Checked exceptions (like IOException, SQLException) do NOT trigger rollback,
-            which can lead to data inconsistency.
+            which can lead to data inconsistency. Jakarta/javax @Transactional behaves the same way
+            unless <code>rollbackOn</code> is configured.
             </p>
-            <p>
-            <b>Problem Example:</b>
-            </p>
-            <pre>
-            @Transactional
-            public void processFile(File file) throws IOException {
-                repository.save(data);  // DB INSERT
-                Files.copy(...);        // IOException occurs
-                // DB data is committed but file operation failed!
-            }
-            </pre>
-            <p>
-            <b>Solution:</b>
-            </p>
-            <pre>
-            @Transactional(rollbackFor = Exception.class)
-            public void processFile(File file) throws IOException {
-                // Now IOException will trigger rollback
-            }
-            </pre>
         """.trimIndent()
     }
 }

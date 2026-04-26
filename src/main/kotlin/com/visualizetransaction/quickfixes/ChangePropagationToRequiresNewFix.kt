@@ -5,33 +5,37 @@ import com.intellij.codeInspection.ProblemDescriptor
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiMethodCallExpression
+import com.intellij.psi.util.PsiTreeUtil
+import com.visualizetransaction.utils.PsiUtils
 
 class ChangePropagationToRequiresNewFix : LocalQuickFix {
 
     override fun getFamilyName(): String = "Change propagation to REQUIRES_NEW"
 
     override fun applyFix(project: Project, descriptor: ProblemDescriptor) {
-        val methodCall = descriptor.psiElement.parent as? PsiMethodCallExpression ?: return
-        val calledMethod = methodCall.resolveMethod() ?: return
+        val methodCall = PsiTreeUtil.getParentOfType(
+            descriptor.psiElement,
+            PsiMethodCallExpression::class.java
+        ) ?: return
 
+        val calledMethod = methodCall.resolveMethod() ?: return
         val transactional = calledMethod.annotations.firstOrNull {
-            it.qualifiedName == "org.springframework.transaction.annotation.Transactional"
+            it.qualifiedName == PsiUtils.SPRING_TRANSACTIONAL
         } ?: return
 
         val factory = JavaPsiFacade.getElementFactory(project)
+        val annotationFqn = transactional.qualifiedName ?: return
 
-        val existingAttributes = transactional.parameterList.attributes
+        val attributesText = transactional.parameterList.attributes
             .filter { it.name != "propagation" }
             .joinToString(", ") { attr ->
-                val name = attr.name ?: "value"
-                val value = attr.value?.text ?: ""
-                "$name = $value"
+                "${attr.name ?: "value"} = ${attr.value?.text ?: ""}"
             }
 
-        val newAnnotationText = if (existingAttributes.isEmpty()) {
-            "@org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)"
+        val newAnnotationText = if (attributesText.isEmpty()) {
+            "@$annotationFqn(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)"
         } else {
-            "@org.springframework.transaction.annotation.Transactional($existingAttributes, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)"
+            "@$annotationFqn($attributesText, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)"
         }
 
         val newAnnotation = factory.createAnnotationFromText(newAnnotationText, transactional.context)

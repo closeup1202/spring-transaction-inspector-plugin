@@ -265,6 +265,7 @@ Fine-grained control over which inspections to enable:
 - ✓ Enable N+1 query detection
   - ✓ Check in stream operations (.map, .flatMap)
   - ✓ Check in for-each loops
+  - ☐ Also detect outside @Transactional (OSIV)
 - ✓ Show gutter icons for @Transactional methods
   - ✓ Show different icon for readOnly transactions
 
@@ -373,8 +374,10 @@ Contributions are welcome! Here's how you can help:
 ```bash
 git clone https://github.com/closeup1202/spring-transaction-inspector-plugin.git
 cd spring-transaction-inspector-plugin
-./gradlew runIde  # Launch IDE with plugin
-./gradlew test    # Run tests TODO: Some tests are currently failing; will fix later
+./gradlew runIde       # Launch a sandbox IDE with the plugin loaded
+./gradlew test         # Run unit tests (also enforced in CI)
+./gradlew verifyPlugin # Run JetBrains' plugin verifier
+./gradlew buildPlugin  # Produce the distributable .zip
 ```
 
 ## 📝 License

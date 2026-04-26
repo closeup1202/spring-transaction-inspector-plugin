@@ -68,6 +68,7 @@ class NPlusOneQueryInspectionTest : BaseInspectionTest() {
     fun testDetectLazyLoadingInStreamMap() {
         val code = """
             import org.springframework.transaction.annotation.Transactional;
+            import org.springframework.data.jpa.repository.JpaRepository;
             import javax.persistence.*;
             import java.util.List;
             import java.util.stream.Collectors;
@@ -109,6 +110,7 @@ class NPlusOneQueryInspectionTest : BaseInspectionTest() {
     fun testDetectLazyLoadingInStreamFlatMap() {
         val code = """
             import org.springframework.transaction.annotation.Transactional;
+            import org.springframework.data.jpa.repository.JpaRepository;
             import javax.persistence.*;
             import java.util.List;
             import java.util.stream.Collectors;
@@ -150,6 +152,7 @@ class NPlusOneQueryInspectionTest : BaseInspectionTest() {
     fun testDetectLazyLoadingInStreamForEach() {
         val code = """
             import org.springframework.transaction.annotation.Transactional;
+            import org.springframework.data.jpa.repository.JpaRepository;
             import javax.persistence.*;
             import java.util.List;
 
@@ -189,6 +192,7 @@ class NPlusOneQueryInspectionTest : BaseInspectionTest() {
     fun testNoWarningForEagerLoadingInStream() {
         val code = """
             import org.springframework.transaction.annotation.Transactional;
+            import org.springframework.data.jpa.repository.JpaRepository;
             import javax.persistence.*;
             import java.util.List;
             import java.util.stream.Collectors;
