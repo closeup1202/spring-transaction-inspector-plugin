@@ -28,13 +28,11 @@ dependencies {
     // JUnit 4 for BasePlatformTestCase (which extends junit.framework.TestCase)
     testImplementation("junit:junit:4.13.2")
 
-    // Spring Framework annotations for tests
-    testImplementation("org.springframework:spring-tx:6.1.3")
-    testImplementation("org.springframework:spring-context:6.1.3")
-
-    // JPA annotations for tests
-    testImplementation("jakarta.persistence:jakarta.persistence-api:3.1.0")
-    testImplementation("jakarta.transaction:jakarta.transaction-api:2.0.1")
+    // Note: Spring (spring-tx, spring-context) and Jakarta (persistence-api,
+    // transaction-api) jars are intentionally NOT pulled in as test dependencies.
+    // BaseInspectionTest provides minimal stubs for the annotations we need via
+    // myFixture.addFileToProject(...), so the real jars would only add weight and
+    // expose unrelated CVEs without being executed.
 }
 
 intellijPlatform {
@@ -104,6 +102,17 @@ intellijPlatform {
     }
 
     buildSearchableOptions = false
+
+    pluginVerification {
+        ides {
+            // Runs only in the publish workflow (on tag push). `recommended()` picks
+            // representative IDE versions across the sinceBuild..untilBuild range
+            // (currently 242 .. 261.*) so we catch deprecated/removed API issues on
+            // both the lower bound (2024.2) and the latest (2026.1.x) before any
+            // build reaches the ~700 users on the marketplace.
+            recommended()
+        }
+    }
 }
 
 java {
