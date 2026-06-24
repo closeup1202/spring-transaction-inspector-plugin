@@ -12,12 +12,15 @@ Spring's `@Transactional` is powerful but has many gotchas that even experienced
 - N+1 query performance issues that only show up in production
 - Checked exceptions that don't trigger rollback, causing data inconsistency
 - Transaction propagation conflicts that cause runtime errors
+- Long-running external calls inside a transaction that exhaust the connection pool
+- Swallowed exceptions that let a broken transaction commit anyway
+- `@Retryable` wrapped around `@Transactional` that re-runs side effects on every retry
 
 This plugin catches these issues **while you code**, before they reach production.
 
 ## ✨ Features
 
-### 🔍 8 Comprehensive Inspections
+### 🔍 11 Comprehensive Inspections
 
 #### 1. **AOP Proxy Bypass Detection**
 Detects when `@Transactional` methods are called within the same class, causing transaction settings to be ignored.
@@ -206,7 +209,7 @@ public class UserService {
 - **Same-class call**: Shows ERROR (not just warning) because `REQUIRES_NEW` won't work due to AOP bypass
 - **Different-class call**: Shows WARNING with Quick Fix to change propagation to `REQUIRES_NEW`
 
-**Solutions:**
+**Solutions for #8:**
 
 ✅ **Option 1: Extract to separate service**
 ```java
@@ -237,6 +240,103 @@ public void viewUserData() {
 }
 ```
 
+#### 9. **External Calls Inside a Transaction** 🆕
+Flags blocking external work (HTTP, email, file I/O, `Thread.sleep`) inside `@Transactional`. The DB connection is held for the **entire** method, so slow network-bound calls can drain the connection pool under load.
+
+Detects calls to `RestTemplate` / `RestClient` / `WebClient`, `HttpClient`, OkHttp, Apache HttpClient, `@FeignClient` interfaces, `JavaMailSender` / `MailSender`, `java.nio.file.Files`, and `Thread.sleep()`.
+
+> **Scope:** only methods annotated with `@Transactional` directly are checked. Class-level `@Transactional` is intentionally not considered, to avoid flagging unrelated methods of a transactional service.
+
+```java
+@Transactional
+public void placeOrder(Order order) {
+    orderRepository.save(order);
+    restTemplate.postForObject(url, order, Void.class);  // ⚠️ Holds DB connection during the HTTP call!
+}
+```
+
+**Solution:**
+```java
+public void placeOrder(Order order) {
+    saveOrder(order);                                    // ✅ short transaction
+    restTemplate.postForObject(url, order, Void.class);  // ✅ outside the transaction
+}
+
+@Transactional
+public void saveOrder(Order order) {
+    orderRepository.save(order);
+}
+```
+
+#### 10. **Swallowed Exceptions** 🆕
+Detects exceptions caught inside a `@Transactional` method that are neither re-thrown nor flagged for rollback. Spring's proxy sees a normal return and **commits**, leaving partial/inconsistent data.
+
+> **Scope:** only methods annotated with `@Transactional` directly are checked. Class-level `@Transactional` is intentionally not considered, to avoid flagging unrelated methods of a transactional service.
+
+```java
+@Transactional
+public void process() {
+    try {
+        repository.save(entity);
+        riskyStep();
+    } catch (Exception e) {
+        log.error("failed", e);  // ⚠️ Swallowed - transaction commits anyway!
+    }
+}
+```
+
+**Solution:**
+```java
+@Transactional
+public void process() {
+    try {
+        repository.save(entity);
+        riskyStep();
+    } catch (Exception e) {
+        log.error("failed", e);
+        throw e;  // ✅ re-throw, or call setRollbackOnly()
+        // TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+    }
+}
+```
+
+#### 11. **@Retryable + @Transactional on the Same Bean** 🆕
+Detects `@Retryable` and `@Transactional` declared on the same method/bean. The transaction commits **before** the retry fires, so the retry re-enters with a fresh transaction and side effects (e.g. a balance deduction) can run once per attempt — triple retry, triple deduction.
+
+```java
+@Service
+public class PaymentService {
+    @Retryable
+    @Transactional  // ⚠️ Retry wraps the transaction - side effects repeat on each attempt!
+    public void charge(Long accountId, long amount) {
+        balanceRepository.deduct(accountId, amount);
+        gateway.call();  // may fail -> retry re-runs the whole transaction
+    }
+}
+```
+
+**Solution: split retry and transaction into separate beans**
+```java
+@Service
+public class PaymentService {
+    private final PaymentTxService txService;
+
+    @Retryable  // ✅ outer bean handles retry
+    public void charge(Long accountId, long amount) {
+        txService.charge(accountId, amount);
+    }
+}
+
+@Service
+public class PaymentTxService {
+    @Transactional  // ✅ inner bean handles the transaction - each retry gets a clean boundary
+    public void charge(Long accountId, long amount) {
+        balanceRepository.deduct(accountId, amount);
+        gateway.call();
+    }
+}
+```
+
 ### 🎨 Visual Indicators
 - **Gutter icons** for `@Transactional` methods
 - **Different icons** for read-only vs write transactions
@@ -262,6 +362,9 @@ Fine-grained control over which inspections to enable:
 - ✓ Detect @Async and @Transactional conflicts
 - ✓ Detect write method calls from readOnly transactions
 - ✓ Detect transaction propagation conflicts (MANDATORY/NEVER/REQUIRES_NEW)
+- ✓ Detect @Retryable and @Transactional on the same bean
+- ✓ Detect exceptions swallowed inside @Transactional methods
+- ✓ Detect external calls (HTTP/email/file/sleep) inside @Transactional methods
 - ✓ Enable N+1 query detection
   - ✓ Check in stream operations (.map, .flatMap)
   - ✓ Check in for-each loops

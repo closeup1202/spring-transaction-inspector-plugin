@@ -31,7 +31,10 @@ class TransactionInspectorConfigurable(private val project: Project) : Configura
         Toggle("Detect @Async and @Transactional conflicts", TransactionInspectorSettings.State::enableAsyncTransactionalDetection),
         Toggle("Detect write method calls from readOnly transactions", TransactionInspectorSettings.State::enableReadOnlyWriteCallDetection),
         Toggle("Detect write operations in @Transactional(readOnly=true) methods", TransactionInspectorSettings.State::enableReadOnlyTransactionalDetection),
-        Toggle("Detect transaction propagation conflicts (MANDATORY/NEVER/REQUIRES_NEW)", TransactionInspectorSettings.State::enablePropagationConflictDetection)
+        Toggle("Detect transaction propagation conflicts (MANDATORY/NEVER/REQUIRES_NEW)", TransactionInspectorSettings.State::enablePropagationConflictDetection),
+        Toggle("Detect @Retryable and @Transactional on the same bean", TransactionInspectorSettings.State::enableRetryableTransactionalDetection),
+        Toggle("Detect exceptions swallowed inside @Transactional methods", TransactionInspectorSettings.State::enableSwallowedExceptionDetection),
+        Toggle("Detect external calls (HTTP/email/file/sleep) inside @Transactional methods", TransactionInspectorSettings.State::enableExternalCallDetection)
     )
 
     private val n1Toggles = listOf(

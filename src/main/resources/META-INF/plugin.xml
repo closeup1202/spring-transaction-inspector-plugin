@@ -1,14 +1,14 @@
 <idea-plugin>
     <id>com.visualize-transaction</id>
     <name>Spring Transaction Inspector</name>
-    <version>1.1.0</version>
+    <version>1.2.0</version>
     <vendor email="closeup1202@gmail.com" url="https://github.com/closeup1202">closeup1202</vendor>
 
     <description><![CDATA[
         <h2>Spring Transaction Inspector</h2>
         <p>Catch Spring @Transactional pitfalls before they reach production! This plugin performs static analysis to detect common transaction anti-patterns and configuration issues.</p>
 
-        <h3>🎯 Key Features (8 Inspections)</h3>
+        <h3>🎯 Key Features (11 Inspections)</h3>
         <ul>
             <li><b>AOP Proxy Bypass Detection</b> - Warns when calling @Transactional methods within the same class</li>
             <li><b>Invalid Method Modifiers</b> - Detects @Transactional on private/final/static methods that Spring cannot intercept</li>
@@ -17,6 +17,9 @@
             <li><b>ReadOnly Transaction Violations</b> - Detects write operations in @Transactional(readOnly=true) methods</li>
             <li><b>Checked Exception Rollback</b> - Warns when checked exceptions won't trigger rollback without proper configuration</li>
             <li><b>@Async + @Transactional Conflicts</b> - Detects when transactions won't propagate to async threads</li>
+            <li><b>@Retryable + @Transactional Conflicts</b> - Detects retry-around-transaction on the same bean that can re-run side effects on every attempt</li>
+            <li><b>Swallowed Exceptions</b> - Detects exceptions caught inside @Transactional without re-throw or setRollbackOnly, which silently commits partial data</li>
+            <li><b>External Calls in Transactions</b> - Detects HTTP/email/file I/O and Thread.sleep inside @Transactional that hold the DB connection too long</li>
             <li><b>ReadOnly Calling Write Methods</b> - Smart detection of propagation conflicts between read-only and write transactions</li>
             <li><b>Visual Indicators</b> - Gutter icons show transactional methods at a glance</li>
             <li><b>Quick Fixes</b> - One-click solutions for common issues</li>
@@ -35,7 +38,14 @@
     ]]></description>
 
     <change-notes><![CDATA[
-        <h3>Version 1.1.0 - Quality &amp; Reliability Release (Latest)</h3>
+        <h3>Version 1.2.0 - Three New Inspections (Latest)</h3>
+        <ul>
+            <li><b>@Retryable + @Transactional on the same bean:</b> Warns when both annotations sit on one method, where the transaction commits before the retry fires and side effects can run once per attempt. Split into an outer retry bean and an inner transactional bean.</li>
+            <li><b>Swallowed exceptions inside @Transactional:</b> Detects catch blocks that neither re-throw nor call <code>setRollbackOnly()</code>, which makes Spring commit partial data silently.</li>
+            <li><b>External calls inside @Transactional:</b> Flags HTTP calls (RestTemplate/WebClient/RestClient/HttpClient/OkHttp/Feign), email sends, file I/O and <code>Thread.sleep()</code> that hold the DB connection for the whole method and can exhaust the pool under load.</li>
+        </ul>
+
+        <h3>Version 1.1.0 - Quality &amp; Reliability Release</h3>
         <ul>
             <li><b>Jakarta/javax parity:</b> Propagation conflict detection (MANDATORY/NEVER/REQUIRES_NEW) and <code>rollbackOn</code> awareness now work for <code>jakarta.transaction.Transactional</code> and <code>javax.transaction.Transactional</code>, not only Spring.</li>
             <li><b>Deeper async detection:</b> Lazy-relationship access in <code>@Async</code> methods is now caught anywhere in a call chain (e.g. <code>user.getOrders().get(0).getItems()</code>), not just first-level getters.</li>
@@ -188,6 +198,27 @@
                 enabledByDefault="true"
                 level="WARNING"
                 implementationClass="com.visualizetransaction.inspections.TransactionalPropagationConflictInspection"/>
+        <localInspection
+                language="JAVA"
+                displayName="@Retryable and @Transactional on the same bean"
+                groupName="Spring Transaction Inspector"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.RetryableTransactionalConflictInspection"/>
+        <localInspection
+                language="JAVA"
+                displayName="Exception swallowed inside @Transactional method"
+                groupName="Spring Transaction Inspector"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.SwallowedExceptionInspection"/>
+        <localInspection
+                language="JAVA"
+                displayName="External call inside @Transactional method"
+                groupName="Spring Transaction Inspector"
+                enabledByDefault="true"
+                level="WARNING"
+                implementationClass="com.visualizetransaction.inspections.ExternalCallInTransactionInspection"/>
         <projectConfigurable
                 parentId="tools"
                 instance="com.visualizetransaction.settings.TransactionInspectorConfigurable"

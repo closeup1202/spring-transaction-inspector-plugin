@@ -61,6 +61,13 @@ abstract class BaseInspectionTest : LightJavaCodeInsightFixtureTestCase() {
             }
         """.trimIndent())
 
+        myFixture.addFileToProject("org/springframework/retry/annotation/Retryable.java", """
+            package org.springframework.retry.annotation;
+            public @interface Retryable {
+                int maxAttempts() default 3;
+            }
+        """.trimIndent())
+
         myFixture.addFileToProject("org/springframework/stereotype/Service.java", """
             package org.springframework.stereotype;
             public @interface Service {
