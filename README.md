@@ -5,7 +5,7 @@
 
 IntelliJ IDEA plugin for detecting common Spring `@Transactional` pitfalls and anti-patterns through static code analysis.
 
-## 🎯 Why This Plugin?
+## Why This Plugin?
 
 Spring's `@Transactional` is powerful but has many gotchas that even experienced developers miss:
 - Methods that silently ignore transaction settings due to AOP proxy bypass
@@ -18,9 +18,9 @@ Spring's `@Transactional` is powerful but has many gotchas that even experienced
 
 This plugin catches these issues **while you code**, before they reach production.
 
-## ✨ Features
+## Features
 
-### 🔍 11 Comprehensive Inspections
+### 11 Comprehensive Inspections
 
 #### 1. **AOP Proxy Bypass Detection**
 Detects when `@Transactional` methods are called within the same class, causing transaction settings to be ignored.
@@ -53,7 +53,7 @@ public class OrderService {
 }
 ```
 
-#### 3. **Transaction Propagation Conflict Detection** 🆕
+#### 3. **Transaction Propagation Conflict Detection** 
 Detects MANDATORY/NEVER/REQUIRES_NEW conflicts that cause runtime exceptions or data inconsistency.
 
 **MANDATORY - Called without transaction:**
@@ -100,8 +100,8 @@ Identifies lazy-loaded relationships accessed in loops/streams that cause perfor
 Now detects **all JPA relationship types:**
 - `@OneToMany` (LAZY by default)
 - `@ManyToMany` (LAZY by default)
-- `@ManyToOne(fetch = LAZY)` 🆕
-- `@OneToOne(fetch = LAZY)` 🆕
+- `@ManyToOne(fetch = LAZY)`
+- `@OneToOne(fetch = LAZY)`
 
 ```java
 @Transactional
@@ -240,7 +240,7 @@ public void viewUserData() {
 }
 ```
 
-#### 9. **External Calls Inside a Transaction** 🆕
+#### 9. **External Calls Inside a Transaction**
 Flags blocking external work (HTTP, email, file I/O, `Thread.sleep`) inside `@Transactional`. The DB connection is held for the **entire** method, so slow network-bound calls can drain the connection pool under load.
 
 Detects calls to `RestTemplate` / `RestClient` / `WebClient`, `HttpClient`, OkHttp, Apache HttpClient, `@FeignClient` interfaces, `JavaMailSender` / `MailSender`, `java.nio.file.Files`, and `Thread.sleep()`.
@@ -268,7 +268,7 @@ public void saveOrder(Order order) {
 }
 ```
 
-#### 10. **Swallowed Exceptions** 🆕
+#### 10. **Swallowed Exceptions**
 Detects exceptions caught inside a `@Transactional` method that are neither re-thrown nor flagged for rollback. Spring's proxy sees a normal return and **commits**, leaving partial/inconsistent data.
 
 > **Scope:** only methods annotated with `@Transactional` directly are checked. Class-level `@Transactional` is intentionally not considered, to avoid flagging unrelated methods of a transactional service.
@@ -300,7 +300,7 @@ public void process() {
 }
 ```
 
-#### 11. **@Retryable + @Transactional on the Same Bean** 🆕
+#### 11. **@Retryable + @Transactional on the Same Bean**
 Detects `@Retryable` and `@Transactional` declared on the same method/bean. The transaction commits **before** the retry fires, so the retry re-enters with a fresh transaction and side effects (e.g. a balance deduction) can run once per attempt — triple retry, triple deduction.
 
 ```java
@@ -337,12 +337,12 @@ public class PaymentTxService {
 }
 ```
 
-### 🎨 Visual Indicators
+### Visual Indicators
 - **Gutter icons** for `@Transactional` methods
 - **Different icons** for read-only vs write transactions
 - **Hover tooltips** with transaction configuration details
 
-### ⚡ Quick Fixes
+### Quick Fixes
 - Add `rollbackFor = Exception.class`
 - Add specific exception types to `rollbackFor`
 - Change method visibility (private → public/protected)
@@ -350,7 +350,7 @@ public class PaymentTxService {
 - Change propagation to `REQUIRES_NEW`
 - Remove conflicting annotations
 
-### ⚙️ Customization
+### Customization
 Fine-grained control over which inspections to enable:
 
 **Settings → Tools → Spring Transaction Inspector**
@@ -372,7 +372,7 @@ Fine-grained control over which inspections to enable:
 - ✓ Show gutter icons for @Transactional methods
   - ✓ Show different icon for readOnly transactions
 
-## 📦 Installation
+## Installation
 
 ### From JetBrains Marketplace (Recommended)
 1. Open IntelliJ IDEA
@@ -387,7 +387,7 @@ Fine-grained control over which inspections to enable:
 3. Select the downloaded `.zip` file
 4. Restart IDE
 
-## 🚀 Usage
+## Usage
 
 ### Automatic Detection
 Once installed, the plugin automatically analyzes your code:
@@ -401,7 +401,7 @@ Right-click on a method → `Show Transaction Info`
 ### Configuration
 `Settings/Preferences → Tools → Spring Transaction Inspector`
 
-## 💡 Best Practices Enforced
+## Best Practices Enforced
 
 ### ✅ DO
 ```java
@@ -452,20 +452,20 @@ for (User user : users) {
 private void saveOrder() { }  // ❌ AOP cannot intercept
 ```
 
-## 📊 Supported Frameworks
+## Supported Frameworks
 
 - **Spring Framework** 5.x, 6.x
 - **Spring Boot** 2.x, 3.x
 - **JPA/Hibernate** (for N+1 detection)
 - **Jakarta Persistence** (JPA 3.0+)
 
-## 🔧 Requirements
+## Requirements
 
 - **IntelliJ IDEA** 2024.2+ (Community or Ultimate Edition)
 - **Java** 21+
 - **Kotlin** 2.1.0+ (for plugin development)
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Here's how you can help:
 
@@ -483,20 +483,20 @@ cd spring-transaction-inspector-plugin
 ./gradlew buildPlugin  # Produce the distributable .zip
 ```
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 👤 Author
+## Author
 
 **[@closeup1202](https://github.com/closeup1202)**
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Inspired by real-world Spring transaction issues encountered in production
 - Built with [IntelliJ Platform SDK](https://plugins.jetbrains.com/docs/intellij/welcome.html)
 
-## 📮 Support
+## Support
 
 - **Issues**: [GitHub Issues](https://github.com/closeup1202/spring-transaction-inspector-plugin/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/closeup1202/spring-transaction-inspector-plugin/discussions)
