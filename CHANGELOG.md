@@ -4,6 +4,17 @@ All notable changes to **Spring Transaction Inspector** are documented here. The
 recent entry is also embedded into `plugin.xml` `<change-notes>` and used by the GitHub
 release workflow.
 
+## [1.2.0] - Three New Inspections
+
+### Added
+- **External calls inside `@Transactional`.** New `ExternalCallInTransactionInspection` flags HTTP calls (`RestTemplate`/`WebClient`/`RestClient`/`HttpClient`/OkHttp/Feign), email sends, file I/O and `Thread.sleep()` made inside a transaction — these hold the DB connection for the whole method and can exhaust the pool under load.
+- **Swallowed exceptions inside `@Transactional`.** New `SwallowedExceptionInspection` flags `catch` blocks that neither re-throw nor call `setRollbackOnly()`, which makes Spring silently commit partial data.
+- **`@Retryable` + `@Transactional` conflict.** New `RetryableTransactionalConflictInspection` warns when both annotations sit on the same bean: the transaction commits before the retry fires, so side effects can re-run on every attempt. The fix is to split into an outer retry bean and an inner transactional bean.
+
+### Internal
+- External-call and swallowed-exception checks are scoped to method-level `@Transactional` only, avoiding false positives on class-level transactional beans.
+- Wired up settings toggles (`TransactionInspectorSettings`/`TransactionInspectorConfigurable`) and `plugin.xml` registration for all three inspections, bringing the total to 11.
+
 ## [1.1.0] - Quality & Reliability Release
 
 ### Internal
