@@ -41,7 +41,7 @@ jobs:
           JETBRAINS_TOKEN: ${{ secrets.JETBRAINS_TOKEN }}
 
       - name: Extract Version
-        run: echo "VERSION=${GITHUB_REF##*/}" | sed 's/^v//' >> $GITHUB_ENV
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
