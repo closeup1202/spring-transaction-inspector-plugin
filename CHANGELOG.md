@@ -4,6 +4,9 @@ All notable changes to **Spring Transaction Inspector** are documented here. The
 recent entry is also embedded into `plugin.xml` `<change-notes>` and used by the GitHub
 release workflow.
 
+## [1.2.1] - IDE Compatibility Update
+- Extended support to IntelliJ IDEA 2026.2 (build 262.*).
+
 ## [1.2.0] - Three New Inspections
 
 ### Added

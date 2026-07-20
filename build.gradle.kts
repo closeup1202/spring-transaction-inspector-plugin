@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.visualizetransaction"
-version = "1.2.0"
+version = "1.2.1"
 
 repositories {
     mavenCentral()
@@ -39,10 +39,22 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "261.*"
+            untilBuild = "262.*"
         }
 
         changeNotes = """
+            <h3>Version 1.2.1 - IDE Compatibility Update</h3>
+            <ul>
+                <li><b>IDE Compatibility:</b> Extended support to IntelliJ IDEA 2026.2 (build 262.*)</li>
+            </ul>
+
+            <h3>Version 1.2.0 - Three New Inspections</h3>
+            <ul>
+                <li><b>External calls inside @Transactional:</b> New inspection flags HTTP calls (<code>RestTemplate</code>/<code>WebClient</code>/<code>RestClient</code>/<code>HttpClient</code>/OkHttp/Feign), email sends, file I/O and <code>Thread.sleep()</code> made inside a transaction &mdash; these hold the DB connection for the whole method and can exhaust the pool under load.</li>
+                <li><b>Swallowed exceptions inside @Transactional:</b> New inspection flags <code>catch</code> blocks that neither re-throw nor call <code>setRollbackOnly()</code>, which makes Spring silently commit partial data.</li>
+                <li><b>@Retryable + @Transactional conflict:</b> New inspection warns when both annotations sit on the same bean &mdash; the transaction commits before the retry fires, so side effects can re-run on every attempt.</li>
+            </ul>
+
             <h3>Version 1.1.0 - Quality &amp; Reliability Release</h3>
             <ul>
                 <li><b>Jakarta/javax parity:</b> Propagation conflict detection (MANDATORY/NEVER/REQUIRES_NEW) and <code>rollbackOn</code> awareness now work for <code>jakarta.transaction.Transactional</code> and <code>javax.transaction.Transactional</code>, not only Spring.</li>
@@ -107,8 +119,8 @@ intellijPlatform {
         ides {
             // Runs only in the publish workflow (on tag push). `recommended()` picks
             // representative IDE versions across the sinceBuild..untilBuild range
-            // (currently 242 .. 261.*) so we catch deprecated/removed API issues on
-            // both the lower bound (2024.2) and the latest (2026.1.x) before any
+            // (currently 242 .. 262.*) so we catch deprecated/removed API issues on
+            // both the lower bound (2024.2) and the latest (2026.2.x) before any
             // build reaches the ~700 users on the marketplace.
             recommended()
         }
