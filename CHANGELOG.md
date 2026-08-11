@@ -4,6 +4,9 @@ All notable changes to **Spring Transaction Inspector** are documented here. The
 recent entry is also embedded into `plugin.xml` `<change-notes>` and used by the GitHub
 release workflow.
 
+## [Unreleased]
+- Removed the `untilBuild` upper bound (descriptor now declares `since-build="242"` only), so future IDE lines (2026.3+) work without a compatibility re-release. Every past compatibility update (1.0.3, 1.0.5, 1.2.1) was just an `untilBuild` bump; real breakage in a future IDE will be flagged by Marketplace's automatic Plugin Verifier. Takes effect from the first release that ships it.
+
 ## [1.2.1] - IDE Compatibility Update
 - Extended support to IntelliJ IDEA 2026.2 (build 262.*).
 
