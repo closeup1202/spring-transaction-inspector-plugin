@@ -39,7 +39,11 @@ intellijPlatform {
     pluginConfiguration {
         ideaVersion {
             sinceBuild = "242"
-            untilBuild = "262.*"
+            // No upper bound: the plugin only uses stable PSI/inspection APIs, and every
+            // past "compatibility" release was just an untilBuild bump. Omitting it means
+            // new IDE lines work without a re-release; Marketplace's automatic Plugin
+            // Verifier will flag (and email us about) any real breakage in a new IDE.
+            untilBuild = provider { null }
         }
 
         changeNotes = """
@@ -118,10 +122,9 @@ intellijPlatform {
     pluginVerification {
         ides {
             // Runs only in the publish workflow (on tag push). `recommended()` picks
-            // representative IDE versions across the sinceBuild..untilBuild range
-            // (currently 242 .. 262.*) so we catch deprecated/removed API issues on
-            // both the lower bound (2024.2) and the latest (2026.2.x) before any
-            // build reaches the ~700 users on the marketplace.
+            // representative IDE versions from sinceBuild (242) up to the newest
+            // release, so we catch deprecated/removed API issues on both bounds
+            // before any build reaches the ~700 users on the marketplace.
             recommended()
         }
     }
