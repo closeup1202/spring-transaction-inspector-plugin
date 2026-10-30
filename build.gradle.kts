@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.visualizetransaction"
-version = "1.2.1"
+version = "1.2.2"
 
 repositories {
     mavenCentral()
@@ -47,6 +47,11 @@ intellijPlatform {
         }
 
         changeNotes = """
+            <h3>Version 1.2.2 - IDE Compatibility Update</h3>
+            <ul>
+                <li><b>IDE Compatibility:</b> Removed the upper IDE build limit, so the plugin works on IntelliJ IDEA 2026.3 (build 263.*) and future versions without a re-release.</li>
+            </ul>
+
             <h3>Version 1.2.1 - IDE Compatibility Update</h3>
             <ul>
                 <li><b>IDE Compatibility:</b> Extended support to IntelliJ IDEA 2026.2 (build 262.*)</li>
